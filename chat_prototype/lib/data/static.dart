@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 class StaticData {
   static List<PersonChat> chat = [];
+  static List<ListChat> list = [];
 
   static setChat() {
     chat = [];
@@ -18,11 +19,13 @@ class StaticData {
         date: chatData.date,
         isLabel: true,
         person: chatData.person,
+        listId: chatData.listId,
       );
       chat.add(person);
       await ChatDatabase.insert(data: person);
     } else {
       chat.add(chatData);
+
       await ChatDatabase.insert(data: chatData);
     }
     chat.sort((a, b) => a.date.compareTo(b.date));
@@ -31,5 +34,10 @@ class StaticData {
   static addFromDatabase(PersonChat chatData) async {
     chat.add(chatData);
     chat.sort((a, b) => a.date.compareTo(b.date));
+  }
+
+  static addListChat(ListChat data) async {
+    await ChatDatabase.insertListChat(data: data);
+    list.add(data);
   }
 }

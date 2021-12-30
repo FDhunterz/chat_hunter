@@ -3,7 +3,6 @@ import 'package:chat_prototype/model/chat.dart';
 dynamic enumPersonParse(data) {
   if (data is Person) {
     if (data == Person.me) {
-      print('me');
       return 'me';
     } else if (data == Person.other) {
       return 'other';
