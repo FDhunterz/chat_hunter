@@ -36,6 +36,7 @@ class ListChat {
   Profile? person;
   DateTime? updated;
   String? lastMessage;
+  ChatTypes? chatType;
 
-  ListChat({this.id, this.person, this.read, this.updated, this.lastMessage});
+  ListChat({this.id, this.person, this.read, this.updated, this.lastMessage, this.chatType});
 }

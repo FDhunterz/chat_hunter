@@ -1,6 +1,8 @@
 import 'package:chat_prototype/video_player.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'data/static.dart';
 import 'helper/date_to_string.dart';
@@ -39,9 +41,12 @@ class _ChatViewState extends State<ChatView> {
   void _incrementCounter() async {
     final person = PersonChat(
       type: Person.other,
-      message: 'lol',
+      message: '''whatsapp://send?phone=6288217081355&text=test''',
       date: DateTime.now(),
       listId: widget.listId,
+      chatType: ChatTypes(
+        type: chatType.text,
+      ),
     );
     StaticData.addChat(person);
     setState(() {});
@@ -50,38 +55,22 @@ class _ChatViewState extends State<ChatView> {
   }
 
   void _me() async {
-    // final person = PersonChat(
-    //   type: Person.me,
-    //   message: 'its me',
-    //   date: DateTime.now(),
-    //   listId: widget.listId,
-    // );
-    // StaticData.addChat(person);
-    // setState(() {});
-    // _control.jumpTo(0);
-    // saveList();
-    Navigator.push(context, MaterialPageRoute(builder: (context) => const BasicPlayerPage()));
+    final person = PersonChat(
+      type: Person.other,
+      message: 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+      date: DateTime.now(),
+      listId: widget.listId,
+      chatType: ChatTypes(
+        type: chatType.file,
+        file: Files.video,
+      ),
+    );
+    StaticData.addChat(person);
+    setState(() {});
+    // Navigator.push(context, MaterialPageRoute(builder: (context) => const BasicPlayerPage()));
   }
 
-  saveList() async {
-    await ChatDatabase.insertList(data: [
-      PersonChat(
-        type: Person.me,
-        message: 'lol 111111',
-        date: DateTime.now(),
-      ),
-      PersonChat(
-        type: Person.me,
-        message: 'lol 222222',
-        date: DateTime.now(),
-      ),
-      PersonChat(
-        type: Person.me,
-        message: 'lol 333333',
-        date: DateTime.now(),
-      )
-    ]);
-  }
+  saveList() async {}
 
   getData() async {
     final data = await ChatDatabase.getData(
@@ -105,6 +94,10 @@ class _ChatViewState extends State<ChatView> {
                 pathImage: i['person_image'],
               )
             : null,
+        chatType: ChatTypes(
+          type: enumChatTypeParse(i['chatType']),
+          file: enumFileTypeParse(i['fileType']),
+        ),
       );
 
       StaticData.addFromDatabase(person);
@@ -143,15 +136,81 @@ class _ChatViewState extends State<ChatView> {
                       final data = StaticData.chat.reversed.toList();
                       final date = dateToString(data[index].date);
                       bool isShow = data[index].isLabel;
+                      List<TextSpan> linkText = [];
+                      Widget text = Row();
+                      if (data[index].chatType.type == chatType.text) {
+                        List sliceLinkOrDeeplink = data[index].message.replaceAll('\n', ' %2526 ').split(' ');
+                        for (int i = 0; i < sliceLinkOrDeeplink.length; i++) {
+                          String data = sliceLinkOrDeeplink[i];
+                          if (data.contains('://')) {
+                            linkText.add(
+                              TextSpan(
+                                text: data.replaceAll('%2526', '\n') + ' ',
+                                onEnter: (pointer) {},
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    launch(data, forceWebView: false, forceSafariVC: false);
+                                  },
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            );
+                          } else {
+                            linkText.add(
+                              TextSpan(
+                                text: data == '%2526' ? '\n' : data + ' ',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                        text = SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: RichText(
+                            text: TextSpan(
+                              text: '',
+                              children: linkText.toList(),
+                            ),
+                          ),
+                        );
+                      }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Column(
-                          crossAxisAlignment: data[index].type == Person.me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                          children: [
-                            isShow ? Center(child: Text(date)) : const SizedBox(),
-                            Text(data[index].message),
-                            Text(DateFormat('HH:mm:ss').format(data[index].date)),
-                          ],
+                        child: InkWell(
+                          focusColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: data[index].chatType.type == chatType.text
+                              ? null
+                              : () {
+                                  if (data[index].chatType.type == chatType.file) {
+                                    if (data[index].chatType.file == Files.video) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => BasicPlayerPage(
+                                            url: data[index].message,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.8,
+                            child: Column(
+                              crossAxisAlignment: data[index].type == Person.me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                isShow ? Center(child: Text(date)) : const SizedBox(),
+                                data[index].chatType.type == chatType.text ? text : const Icon(Icons.file_download),
+                                Text(DateFormat('HH:mm:ss').format(data[index].date)),
+                              ],
+                            ),
+                          ),
                         ),
                       );
                     },

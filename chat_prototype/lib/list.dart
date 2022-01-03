@@ -1,4 +1,5 @@
 import 'package:chat_prototype/data/static.dart';
+import 'package:chat_prototype/helper/enum_to_string.dart';
 import 'package:chat_prototype/model/chat.dart';
 import 'package:chat_prototype/storage/database.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ class _ListChatViewState extends State<ListChatView> {
         read: 0,
         updated: DateTime.now(),
         lastMessage: 'Belum Ada Pesan',
+        chatType: ChatTypes(type: chatType.text),
       ),
     );
     setState(() {});
@@ -34,6 +36,7 @@ class _ListChatViewState extends State<ListChatView> {
     final list = await ChatDatabase.getDataListChat();
     counter = list.length;
     for (var i in list) {
+      print(i['chatType']);
       StaticData.list.add(
         ListChat(
           id: i['id'],
@@ -41,6 +44,7 @@ class _ListChatViewState extends State<ListChatView> {
           read: i['read'].floor(),
           updated: DateTime.fromMillisecondsSinceEpoch(i['updated']),
           lastMessage: i['message'] == 'null' ? null : i['message'],
+          chatType: ChatTypes(type: enumChatTypeParse(i['chatType']) ?? chatType.text),
         ),
       );
     }
@@ -94,12 +98,42 @@ class _ListChatViewState extends State<ListChatView> {
                           ),
                         ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(data.person?.name ?? ''),
-                          Text(data.lastMessage ?? ''),
-                        ],
+                      Expanded(
+                        child: data.chatType!.type == chatType.file
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(data.person?.name ?? ''),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.bookmark),
+                                      Text(
+                                        data.lastMessage!.split('/').last,
+                                        overflow: TextOverflow.fade,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(data.person?.name ?? ''),
+                                  SizedBox(
+                                    height: 18,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            data.lastMessage ?? '',
+                                            overflow: TextOverflow.fade,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -111,7 +145,9 @@ class _ListChatViewState extends State<ListChatView> {
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: _addPerson,
+        onPressed: () {
+          _addPerson();
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.

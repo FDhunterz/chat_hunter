@@ -39,7 +39,7 @@ dependencies:
   firebase_messaging: ^11.2.4
   firebase_core: ^1.10.6
   video_player: ^2.2.10
-  syncfusion_flutter_sliders: ^19.4.40
+  url_launcher: ^6.0.17
 
 dev_dependencies:
   flutter_test:

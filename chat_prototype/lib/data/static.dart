@@ -14,6 +14,7 @@ class StaticData {
   static addChat(PersonChat chatData) async {
     if (chat.where((element) => DateTime.parse(DateFormat('yyyy-MM-dd').format(element.date)).difference(DateTime.parse(DateFormat('yyyy-MM-dd').format(chatData.date))).inDays == 0 && element.isLabel).isEmpty) {
       final person = PersonChat(
+        chatType: chatData.chatType,
         type: chatData.type,
         message: chatData.message,
         date: chatData.date,

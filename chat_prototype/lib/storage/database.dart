@@ -13,8 +13,8 @@ class ChatDatabase {
   static Future<Database> connect() async {
     await init();
     Database database = await openDatabase(path, version: 1, onCreate: (Database db, int version) async {
-      await db.execute('CREATE TABLE Chat (id INTEGER PRIMARY KEY, idlist REAL ,message TEXT, isLabel TEXT, type TEXT, date TEXT, person_name TEXT, person_image TEXT)');
-      await db.execute('CREATE TABLE ListChat (id INTEGER PRIMARY KEY, read REAL,updated INTEGER,person_name TEXT, person_image TEXT, message TEXT)');
+      await db.execute('CREATE TABLE Chat (id INTEGER PRIMARY KEY, idlist REAL ,message TEXT, isLabel TEXT, type TEXT, date TEXT, person_name TEXT, person_image TEXT,chatType REAL, fileType TEXT)');
+      await db.execute('CREATE TABLE ListChat (id INTEGER PRIMARY KEY, read REAL,updated INTEGER,person_name TEXT, person_image TEXT, message TEXT,chatType REAL)');
     });
 
     return database;
@@ -23,7 +23,7 @@ class ChatDatabase {
   static insertListChat({required ListChat data}) async {
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawInsert('INSERT INTO ListChat(id,read,person_name,person_image,updated) VALUES(${data.id},${data.read},"${data.person?.name}","${data.person?.pathImage}",${data.updated!.millisecondsSinceEpoch})');
+      await txn.rawInsert('INSERT INTO ListChat(id,read,person_name,person_image,updated,chatType) VALUES(${data.id},${data.read},"${data.person?.name}","${data.person?.pathImage}",${data.updated!.millisecondsSinceEpoch},0)');
     });
     await db.close();
   }
@@ -37,8 +37,8 @@ class ChatDatabase {
   static insert({required PersonChat data}) async {
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image) VALUES(${data.id},${data.listId},"${data.message}","${data.isLabel}","${enumPersonParse(data.type)}","${data.date}","${data.person?.name}","${data.person?.pathImage}")');
-      await txn.rawUpdate('UPDATE ListChat SET updated=${data.type == Person.me ? '0' : DateTime.now().millisecondsSinceEpoch},message="${data.message}" WHERE id=${data.listId}');
+      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType) VALUES(${data.id},${data.listId},"${data.message}","${data.isLabel}","${enumPersonParse(data.type)}","${data.date}","${data.person?.name}","${data.person?.pathImage}",${enumChatTypeParse(data.chatType.type)},${enumFileTypeParse(data.chatType.file)})');
+      await txn.rawUpdate('UPDATE ListChat SET updated=${data.type == Person.me ? '0' : DateTime.now().millisecondsSinceEpoch},message="${data.message}",chatType=${enumChatTypeParse(data.chatType.type)} WHERE id=${data.listId}');
     });
     await db.close();
   }
@@ -50,15 +50,15 @@ class ChatDatabase {
     for (final i in data) {
       ++count;
       if (count == data.length) {
-        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}")';
+        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)})';
       } else {
-        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}"),';
+        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)}),';
       }
       lastMessage = i.message;
     }
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image) VALUES $list');
+      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType) VALUES $list');
       await txn.rawUpdate('UPDATE ListChat SET updated=${DateTime.now().millisecondsSinceEpoch},message="$lastMessage" WHERE id=${data.first.listId}');
     });
     await db.close();

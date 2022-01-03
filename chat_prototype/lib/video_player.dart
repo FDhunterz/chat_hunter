@@ -1,8 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 
@@ -10,7 +6,8 @@ AnimationController? playC;
 Animation<double>? play;
 
 class BasicPlayerPage extends StatefulWidget {
-  const BasicPlayerPage({Key? key}) : super(key: key);
+  final String url;
+  const BasicPlayerPage({Key? key, required this.url}) : super(key: key);
   @override
   _BasicPlayerPageState createState() => _BasicPlayerPageState();
 }
@@ -42,7 +39,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> with TickerProviderSt
     super.initState();
     playC = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     play = Tween(begin: 0.0, end: 1.0).animate(playC!);
-    _controller = VideoPlayerController.network('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4')
+    _controller = VideoPlayerController.network(widget.url)
       ..initialize().then((e) {
         setState(() {});
       })
