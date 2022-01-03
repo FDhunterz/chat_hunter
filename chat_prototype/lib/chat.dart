@@ -197,6 +197,8 @@ class _ChatViewState extends State<ChatView> {
                                           ),
                                         ),
                                       );
+                                    } else {
+                                      launch(data[index].message);
                                     }
                                   }
                                 },
