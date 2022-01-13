@@ -28,6 +28,7 @@ class _ListChatViewState extends State<ListChatView> {
         chatType: ChatTypes(type: chatType.text),
       ),
     );
+
     setState(() {});
   }
 
@@ -36,7 +37,6 @@ class _ListChatViewState extends State<ListChatView> {
     final list = await ChatDatabase.getDataListChat();
     counter = list.length;
     for (var i in list) {
-      print(i['chatType']);
       StaticData.list.add(
         ListChat(
           id: i['id'],
@@ -54,7 +54,7 @@ class _ListChatViewState extends State<ListChatView> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration.zero, () {
+    Future.delayed(Duration.zero, () async {
       _getList();
       setState(() {});
     });

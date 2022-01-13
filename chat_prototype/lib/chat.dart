@@ -1,12 +1,18 @@
+import 'dart:isolate';
+import 'dart:ui';
+
 import 'package:chat_prototype/video_player.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'data/static.dart';
 import 'helper/date_to_string.dart';
+import 'helper/downloader.dart';
 import 'helper/enum_to_string.dart';
+import 'image_viewer.dart';
 import 'model/chat.dart';
 import 'storage/database.dart';
 
@@ -23,6 +29,7 @@ class _ChatViewState extends State<ChatView> {
   int page = 0;
   bool ifNoPagemore = false;
   bool process = false;
+  final ReceivePort _port = ReceivePort();
 
   _controllListener() {
     if (_control.position.maxScrollExtent == _control.offset && !process) {
@@ -57,17 +64,16 @@ class _ChatViewState extends State<ChatView> {
   void _me() async {
     final person = PersonChat(
       type: Person.other,
-      message: 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+      message: 'https://media.istockphoto.com/photos/abstract-wavy-object-picture-id1198271727?b=1&k=20&m=1198271727&s=170667a&w=0&h=b626WM5c-lq9g_yGyD0vgufb4LQRX9UgYNWPaNUVses=',
       date: DateTime.now(),
       listId: widget.listId,
       chatType: ChatTypes(
         type: chatType.file,
-        file: Files.video,
+        file: Files.image,
       ),
     );
     StaticData.addChat(person);
     setState(() {});
-    // Navigator.push(context, MaterialPageRoute(builder: (context) => const BasicPlayerPage()));
   }
 
   saveList() async {}
@@ -110,7 +116,27 @@ class _ChatViewState extends State<ChatView> {
     page = 0;
     super.initState();
     _control.addListener(_controllListener);
+    IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_send_port');
+    _port.listen((dynamic data) {
+      String id = data[0];
+      DownloadTaskStatus status = data[1];
+      int progress = data[2];
+      print(progress);
+      setState(() {});
+    });
+    FlutterDownloader.registerCallback(downloadCallback);
     getData();
+  }
+
+  @override
+  void dispose() {
+    IsolateNameServer.removePortNameMapping('downloader_send_port');
+    super.dispose();
+  }
+
+  static void downloadCallback(String id, DownloadTaskStatus status, int progress) {
+    final SendPort? send = IsolateNameServer.lookupPortByName('downloader_send_port');
+    send!.send([id, status, progress]);
   }
 
   @override
@@ -187,7 +213,7 @@ class _ChatViewState extends State<ChatView> {
                           highlightColor: Colors.transparent,
                           onTap: data[index].chatType.type == chatType.text
                               ? null
-                              : () {
+                              : () async {
                                   if (data[index].chatType.type == chatType.file) {
                                     if (data[index].chatType.file == Files.video) {
                                       Navigator.of(context).push(
@@ -196,6 +222,24 @@ class _ChatViewState extends State<ChatView> {
                                             url: data[index].message,
                                           ),
                                         ),
+                                      );
+                                    } else if (data[index].chatType.file == Files.image) {
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute(
+                                      //     builder: (context) => const ImageViewer(
+                                      //       path: 'https://media.istockphoto.com/photos/abstract-wavy-object-picture-id1198271727?b=1&k=20&m=1198271727&s=170667a&w=0&h=b626WM5c-lq9g_yGyD0vgufb4LQRX9UgYNWPaNUVses=',
+                                      //     ),
+                                      //   ),
+                                      // );
+                                      String dir = await getPhoneDirectory(path: '', platform: 'android');
+                                      await download(
+                                        context: context,
+                                        directory: dir,
+                                        url: data[index].message,
+                                        fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.jpg',
+                                        isOpen: false,
+                                        isShare: false,
                                       );
                                     } else {
                                       launch(data[index].message);

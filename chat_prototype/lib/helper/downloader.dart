@@ -12,22 +12,18 @@ bool isLoad = false;
 
 Future<void> download({fileName, url, directory, bool isOpen = false, bool isShare = false, context}) async {
   if (await File(directory + '/' + fileName).exists()) {
-    print('exist');
   } else {
     // _onLoading(context);
-    print(url);
     await FlutterDownloader.enqueue(
       url: url,
       savedDir: directory,
       requiresStorageNotLow: true,
       fileName: fileName,
-      showNotification: false, // show download progress in status bar (for Android)
+      showNotification: true, // show download progress in status bar (for Android)
       openFileFromNotification: true, // click on notification to open downloaded file (for Android)
     );
-    print(directory);
-    print(fileName);
   }
-  delayed = Timer.periodic(Duration(seconds: 1), (times) async {
+  delayed = Timer.periodic(const Duration(seconds: 1), (times) async {
     try {
       if (!isLoad) {
         isLoad = true;
