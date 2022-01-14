@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -64,7 +65,7 @@ class _ChatViewState extends State<ChatView> {
   void _me() async {
     final person = PersonChat(
       type: Person.other,
-      message: 'https://media.istockphoto.com/photos/abstract-wavy-object-picture-id1198271727?b=1&k=20&m=1198271727&s=170667a&w=0&h=b626WM5c-lq9g_yGyD0vgufb4LQRX9UgYNWPaNUVses=',
+      message: 'https://mediplusclinic.co.id/assets/image/klinik/4711ac8334ade5fa1f3152104f6d1bae.jpg',
       date: DateTime.now(),
       listId: widget.listId,
       chatType: ChatTypes(
@@ -79,6 +80,7 @@ class _ChatViewState extends State<ChatView> {
   saveList() async {}
 
   getData() async {
+    String dir = await getPhoneDirectory(path: '', platform: 'android');
     final data = await ChatDatabase.getData(
       idList: widget.listId,
     );
@@ -87,6 +89,11 @@ class _ChatViewState extends State<ChatView> {
       return;
     }
     for (var i in data.skip(page * 20).take(20).toList().reversed) {
+      List<DownloadTask>? task = [];
+      if (enumChatTypeParse(i['chatType']) == chatType.file) {
+        task = await FlutterDownloader.loadTasksWithRawQuery(query: 'SELECT * FROM task WHERE url="${i['message']}"');
+      }
+
       final person = PersonChat(
         type: enumPersonParse(i['type']),
         message: i['message'],
@@ -103,6 +110,13 @@ class _ChatViewState extends State<ChatView> {
         chatType: ChatTypes(
           type: enumChatTypeParse(i['chatType']),
           file: enumFileTypeParse(i['fileType']),
+          status: task != null
+              ? task.first.progress == 100
+                  ? 1
+                  : 0
+              : 0,
+          progress: task?.first.progress == 100 ? 1 : 0,
+          path: dir + (task?.first.filename ?? ''),
         ),
       );
 
@@ -121,7 +135,10 @@ class _ChatViewState extends State<ChatView> {
       String id = data[0];
       DownloadTaskStatus status = data[1];
       int progress = data[2];
-      print(progress);
+      if (progress >= 100) {
+        StaticData.chat.clear();
+        getData();
+      }
       setState(() {});
     });
     FlutterDownloader.registerCallback(downloadCallback);
@@ -237,7 +254,7 @@ class _ChatViewState extends State<ChatView> {
                                         context: context,
                                         directory: dir,
                                         url: data[index].message,
-                                        fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.jpg',
+                                        fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.' + data[index].message.split('.').last,
                                         isOpen: false,
                                         isShare: false,
                                       );
@@ -252,7 +269,20 @@ class _ChatViewState extends State<ChatView> {
                               crossAxisAlignment: data[index].type == Person.me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                               children: [
                                 isShow ? Center(child: Text(date)) : const SizedBox(),
-                                data[index].chatType.type == chatType.text ? text : const Icon(Icons.file_download),
+                                data[index].chatType.type == chatType.text
+                                    ? text
+                                    : (data[index].chatType.file == Files.image && data[index].chatType.status == 1
+                                        ? Container(
+                                            width: 100,
+                                            height: 50,
+                                            decoration: BoxDecoration(
+                                                image: DecorationImage(
+                                              image: FileImage(
+                                                File(data[index].chatType.path!),
+                                              ),
+                                            )),
+                                          )
+                                        : const Icon(Icons.file_download)),
                                 Text(DateFormat('HH:mm:ss').format(data[index].date)),
                               ],
                             ),

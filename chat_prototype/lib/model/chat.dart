@@ -5,8 +5,11 @@ enum chatType { text, file }
 class ChatTypes {
   chatType type;
   Files? file;
+  int status;
+  int progress;
+  String? path;
 
-  ChatTypes({this.file, required this.type});
+  ChatTypes({this.file, required this.type, this.status = 0, this.progress = 0, this.path});
 }
 
 class Profile {
