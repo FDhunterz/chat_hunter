@@ -27,6 +27,8 @@ class _ListChatViewState extends State<ListChatView> {
         read: 0,
         updated: DateTime.now(),
         lastMessage: 'Belum Ada Pesan',
+        token: 'dQYG08VYSeqs7q7TebG1T2:APA91bEnBe8eXYneKBev_HX5dT7X4kj9-iuejkH5D8U2oj2DJJNNmFIRGJqdCkyagg49YI1WbfzUp5KpiFYZ-6S9HXZETEx5vEqOvAut2CRc99UxzClJ2KVcnxqvtu78bfnA_iTmB07b',
+        groupToken: 'dQYG08VYSeqs7q7TebG1T2:APA91bEnBe8eXYneKBev_HX5dT7X4kj9-iuejkH5D8U2oj2DJJNNmFIRGJqdCkyagg49YI1WbfzUp5KpiFYZ-6S9HXZETEx5vEqOvAut2CRc99UxzClJ2KVcnxqvtu78bfnA_iTmB07b',
         chatType: ChatTypes(type: chatType.text),
       ),
     );
@@ -47,6 +49,8 @@ class _ListChatViewState extends State<ListChatView> {
           updated: DateTime.fromMillisecondsSinceEpoch(i['updated']),
           lastMessage: i['message'] == 'null' ? null : i['message'],
           chatType: ChatTypes(type: enumChatTypeParse(i['chatType']) ?? chatType.text),
+          token: i['token'],
+          groupToken: i['groupToken'],
         ),
       );
     }
@@ -81,6 +85,7 @@ class _ListChatViewState extends State<ListChatView> {
                         builder: (context) => ChatView(
                           listId: data.id!,
                           profile: data.person!,
+                          token: data.token!,
                         ),
                       ),
                     ).then((value) async {
@@ -147,6 +152,7 @@ class _ListChatViewState extends State<ListChatView> {
       ),
 
       floatingActionButton: FloatingActionButton(
+        heroTag: "btn1",
         onPressed: () {
           _addPerson();
         },

@@ -10,7 +10,7 @@ import 'model/chat.dart';
 // Replace with server token from firebase console settings.
 const serverToken = 'AAAAWPtQC1Y:APA91bHqqDxXxIhDun9O0r5ioD3TvmPAm5LE0UAWdZBXpR_XqhEBRlYMWJTAQtDDIzWXcexG0UuCPhSMn7kmguoeTxa8BnKOnNqYZRsdpq7Pfaoad1f5t79JKlon4Bfifcxiugns92rB';
 
-Future<Map<String, dynamic>> sendNotification(PersonChat chatData, token) async {
+Future<Map<String, dynamic>> sendNotification(PersonChat chatData, token, otherToken) async {
   await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
     alert: false,
     badge: false,
@@ -28,7 +28,7 @@ Future<Map<String, dynamic>> sendNotification(PersonChat chatData, token) async 
       rawJson: json.encode(<String, dynamic>{
         'notification': {},
         'priority': 1,
-        'registration_ids': ['dCuDBfsDQYKdR8UXT9uRNV:APA91bGSRhR1eGm7xWWPxz8jnHi9QW8zM-j5mbqp0OM3md9AsWy0t6Ph6ta1ZJn-X4Bd2lzTWeDavoSqVlVRjxWcGJoQW8GrMrJwrF71obBybTMHfxxuOyx0CmOetZzvcZkG2Hw7Ob6d'],
+        'registration_ids': [otherToken],
         'data': {
           'message': chatData.message,
           'person_name': chatData.person?.name ?? '',

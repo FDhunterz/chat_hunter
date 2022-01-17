@@ -8,7 +8,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:intl/intl.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
@@ -22,9 +21,10 @@ import 'notification.dart';
 import 'storage/database.dart';
 
 class ChatView extends StatefulWidget {
-  const ChatView({Key? key, required this.listId, required this.profile}) : super(key: key);
+  const ChatView({Key? key, required this.listId, required this.profile, required this.token}) : super(key: key);
   final int listId;
   final Profile profile;
+  final String token;
   @override
   State<ChatView> createState() => _ChatViewState();
 }
@@ -55,7 +55,7 @@ class _ChatViewState extends State<ChatView> {
   void _incrementCounter() async {
     ++incrementId;
     final person = PersonChat(
-      type: Person.other,
+      type: Person.me,
       message: '''whatsapp://send?phone=6288217081355&text=test''',
       date: DateTime.now(),
       id: incrementId,
@@ -68,7 +68,7 @@ class _ChatViewState extends State<ChatView> {
     setState(() {});
     _control.jumpTo(0);
     saveList();
-    sendNotification(person, token);
+    sendNotification(person, token, widget.token);
   }
 
   void _me() async {
@@ -342,6 +342,7 @@ class _ChatViewState extends State<ChatView> {
         children: [
           const Center(),
           FloatingActionButton(
+            heroTag: "btn2",
             onPressed: _incrementCounter,
             tooltip: 'Increment',
             child: const Icon(Icons.add),
@@ -349,6 +350,7 @@ class _ChatViewState extends State<ChatView> {
           Positioned(
             bottom: 70,
             child: FloatingActionButton(
+              heroTag: "btn3",
               onPressed: _me,
               tooltip: 'Increment',
               child: const Icon(Icons.ac_unit),

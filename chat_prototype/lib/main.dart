@@ -9,8 +9,6 @@ import 'data/static.dart';
 import 'model/chat.dart';
 
 Future _backgroundMessageHandler(RemoteMessage message) async {
-  ChatDatabase.deleteDatabases();
-
   final dataList = await ChatDatabase.getDataListChat();
   List list = dataList.where((element) => element['groupToken'] == message.data['token']).toList();
 
@@ -23,20 +21,17 @@ Future _backgroundMessageHandler(RemoteMessage message) async {
         updated: DateTime.now(),
         lastMessage: 'Belum Ada Pesan',
         groupToken: message.data['token'],
+        token: message.data['token'],
         chatType: ChatTypes(type: chatType.text),
       ),
     );
     final dataLists = await ChatDatabase.getDataListChat();
     list = dataLists.where((element) => element['groupToken'] == message.data['token']).toList();
   }
-
+  print(message.data);
   final data = await ChatDatabase.getData(
     idList: list.isNotEmpty ? list.first['id'] : 0,
   );
-
-  print(data);
-  print(list);
-
   final person = PersonChat(
     type: Person.other,
     id: data.isEmpty ? null : data.first['id'] + 1,
@@ -48,8 +43,8 @@ Future _backgroundMessageHandler(RemoteMessage message) async {
       pathImage: message.data['person_name'],
     ),
     chatType: ChatTypes(
-      type: enumChatTypeParse(message.data['chat_type']),
-      file: enumFileTypeParse(message.data['file_type']),
+      type: enumChatTypeParse(int.parse(message.data['chat_type'])),
+      file: enumFileTypeParse(int.parse(message.data['file_type'])),
       path: '',
     ),
   );
