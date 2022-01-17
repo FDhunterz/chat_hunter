@@ -13,8 +13,8 @@ class ChatDatabase {
   static Future<Database> connect() async {
     await init();
     Database database = await openDatabase(path, version: 1, onCreate: (Database db, int version) async {
-      await db.execute('CREATE TABLE Chat (id INTEGER PRIMARY KEY, idlist REAL ,message TEXT, isLabel TEXT, type TEXT, date TEXT, person_name TEXT, person_image TEXT,chatType REAL, fileType TEXT)');
-      await db.execute('CREATE TABLE ListChat (id INTEGER PRIMARY KEY, read REAL,updated INTEGER,person_name TEXT, person_image TEXT, message TEXT,chatType REAL)');
+      await db.execute('CREATE TABLE Chat (id INTEGER PRIMARY KEY, idlist INTEGER ,message TEXT, isLabel TEXT, type TEXT, date TEXT, person_name TEXT, person_image TEXT,chatType INTEGER, fileType TEXT,idFile TEXT,progress Text)');
+      await db.execute('CREATE TABLE ListChat (id INTEGER PRIMARY KEY, read INTEGER,updated INTEGER,person_name TEXT, person_image TEXT, message TEXT,chatType INTEGER,token TEXT,groupToken TEXT)');
     });
 
     return database;
@@ -23,7 +23,7 @@ class ChatDatabase {
   static insertListChat({required ListChat data}) async {
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawInsert('INSERT INTO ListChat(id,read,person_name,person_image,updated,chatType) VALUES(${data.id},${data.read},"${data.person?.name}","${data.person?.pathImage}",${data.updated!.millisecondsSinceEpoch},0)');
+      await txn.rawInsert('INSERT INTO ListChat(id,read,person_name,person_image,updated,chatType,token,groupToken) VALUES(${data.id},${data.read},"${data.person?.name}","${data.person?.pathImage}",${data.updated!.millisecondsSinceEpoch},0,"${data.token}","${data.groupToken}")');
     });
     await db.close();
   }
@@ -37,7 +37,7 @@ class ChatDatabase {
   static insert({required PersonChat data}) async {
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType) VALUES(${data.id},${data.listId},"${data.message}","${data.isLabel}","${enumPersonParse(data.type)}","${data.date}","${data.person?.name}","${data.person?.pathImage}",${enumChatTypeParse(data.chatType.type)},${enumFileTypeParse(data.chatType.file)})');
+      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType,idFile,progress) VALUES(${data.id},${data.listId},"${data.message}","${data.isLabel}","${enumPersonParse(data.type)}","${data.date}","${data.person?.name}","${data.person?.pathImage}",${enumChatTypeParse(data.chatType.type)},${enumFileTypeParse(data.chatType.file)},"null","0")');
       await txn.rawUpdate('UPDATE ListChat SET updated=${data.type == Person.me ? '0' : DateTime.now().millisecondsSinceEpoch},message="${data.message}",chatType=${enumChatTypeParse(data.chatType.type)} WHERE id=${data.listId}');
     });
     await db.close();
@@ -50,18 +50,33 @@ class ChatDatabase {
     for (final i in data) {
       ++count;
       if (count == data.length) {
-        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)})';
+        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)},"null","0")';
       } else {
-        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)}),';
+        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)},"null","0"),';
       }
       lastMessage = i.message;
     }
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType) VALUES $list');
+      await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType,idFile,progress) VALUES $list');
       await txn.rawUpdate('UPDATE ListChat SET updated=${DateTime.now().millisecondsSinceEpoch},message="$lastMessage" WHERE id=${data.first.listId}');
     });
     await db.close();
+  }
+
+  static updateIdFile({String? id, index}) async {
+    Database db = await connect();
+    await db.transaction((txn) async {
+      await txn.rawUpdate('UPDATE Chat SET idFile="$id" WHERE id=$index');
+    });
+    await db.close();
+  }
+
+  static progressUpdate({String? id, progress}) async {
+    Database db = await connect();
+    await db.transaction((txn) async {
+      await txn.rawUpdate('UPDATE Chat SET progress="$progress" WHERE idFile="$id"');
+    });
   }
 
   static delete(id, idList) async {
@@ -79,6 +94,13 @@ class ChatDatabase {
   static Future<List<Map>> getData({required int idList}) async {
     Database db = await connect();
     List<Map> list = await db.rawQuery('SELECT * FROM Chat WHERE idlist = $idList ORDER BY id DESC');
+    await db.close();
+    return list;
+  }
+
+  static Future<List<Map>> getDataByToken({required String token}) async {
+    Database db = await connect();
+    List<Map> list = await db.rawQuery('SELECT * FROM Chat WHERE groupToken = "$token" ORDER BY id DESC');
     await db.close();
     return list;
   }

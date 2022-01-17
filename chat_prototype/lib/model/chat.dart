@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 enum Person { me, other }
 enum Files { pdf, image, video }
 enum chatType { text, file }
@@ -7,9 +9,12 @@ class ChatTypes {
   Files? file;
   int status;
   int progress;
+  String? idFile;
   String? path;
+  String? thumbnailPath;
+  Uint8List? thumnailMemory;
 
-  ChatTypes({this.file, required this.type, this.status = 0, this.progress = 0, this.path});
+  ChatTypes({this.file, required this.type, this.status = 0, this.progress = 0, this.path, this.idFile, this.thumbnailPath, this.thumnailMemory});
 }
 
 class Profile {
@@ -38,8 +43,8 @@ class ListChat {
   int? id, read;
   Profile? person;
   DateTime? updated;
-  String? lastMessage;
+  String? lastMessage, token, groupToken;
   ChatTypes? chatType;
 
-  ListChat({this.id, this.person, this.read, this.updated, this.lastMessage, this.chatType});
+  ListChat({this.id, this.person, this.read, this.updated, this.lastMessage, this.chatType, this.groupToken, this.token});
 }

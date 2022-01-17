@@ -10,11 +10,12 @@ import 'package:share/share.dart';
 Timer? delayed;
 bool isLoad = false;
 
-Future<void> download({fileName, url, directory, bool isOpen = false, bool isShare = false, context}) async {
+Future<String?> download({fileName, url, directory, bool isOpen = false, bool isShare = false, context}) async {
+  String? id;
   if (await File(directory + '/' + fileName).exists()) {
   } else {
     // _onLoading(context);
-    await FlutterDownloader.enqueue(
+    String? data = await FlutterDownloader.enqueue(
       url: url,
       savedDir: directory,
       requiresStorageNotLow: true,
@@ -22,6 +23,7 @@ Future<void> download({fileName, url, directory, bool isOpen = false, bool isSha
       showNotification: true, // show download progress in status bar (for Android)
       openFileFromNotification: true, // click on notification to open downloaded file (for Android)
     );
+    id = data;
   }
   delayed = Timer.periodic(const Duration(seconds: 1), (times) async {
     try {
@@ -51,7 +53,7 @@ Future<void> download({fileName, url, directory, bool isOpen = false, bool isSha
       }
     }
   });
-  return;
+  return id;
 }
 
 Future<String> getPhoneDirectory({platform, path}) async {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 
@@ -17,7 +19,7 @@ class _ImageViewerState extends State<ImageViewer> {
         children: [
           Center(
             child: PhotoView(
-              imageProvider: NetworkImage(widget.path),
+              imageProvider: FileImage(File(widget.path)),
               minScale: 0.8,
               maxScale: 2.0,
             ),

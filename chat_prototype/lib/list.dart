@@ -2,6 +2,8 @@ import 'package:chat_prototype/data/static.dart';
 import 'package:chat_prototype/helper/enum_to_string.dart';
 import 'package:chat_prototype/model/chat.dart';
 import 'package:chat_prototype/storage/database.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import 'chat.dart';
@@ -72,7 +74,7 @@ class _ListChatViewState extends State<ListChatView> {
                 ListChat data = StaticData.list[index];
                 return GestureDetector(
                   onTap: () {
-                    StaticData.chat.clear();
+                    StaticData.clearChat();
                     Navigator.push(
                       context,
                       MaterialPageRoute(

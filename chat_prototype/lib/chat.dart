@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:chat_prototype/video_player.dart';
@@ -7,7 +8,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:intl/intl.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'data/static.dart';
 import 'helper/date_to_string.dart';
@@ -15,6 +18,7 @@ import 'helper/downloader.dart';
 import 'helper/enum_to_string.dart';
 import 'image_viewer.dart';
 import 'model/chat.dart';
+import 'notification.dart';
 import 'storage/database.dart';
 
 class ChatView extends StatefulWidget {
@@ -31,6 +35,8 @@ class _ChatViewState extends State<ChatView> {
   bool ifNoPagemore = false;
   bool process = false;
   final ReceivePort _port = ReceivePort();
+  int? selectedIdDownload;
+  int incrementId = 0;
 
   _controllListener() {
     if (_control.position.maxScrollExtent == _control.offset && !process) {
@@ -47,10 +53,12 @@ class _ChatViewState extends State<ChatView> {
   }
 
   void _incrementCounter() async {
+    ++incrementId;
     final person = PersonChat(
       type: Person.other,
       message: '''whatsapp://send?phone=6288217081355&text=test''',
       date: DateTime.now(),
+      id: incrementId,
       listId: widget.listId,
       chatType: ChatTypes(
         type: chatType.text,
@@ -59,18 +67,22 @@ class _ChatViewState extends State<ChatView> {
     StaticData.addChat(person);
     setState(() {});
     _control.jumpTo(0);
-    // saveList();
+    saveList();
+    sendNotification(person, token);
   }
 
   void _me() async {
+    ++incrementId;
     final person = PersonChat(
       type: Person.other,
-      message: 'https://mediplusclinic.co.id/assets/image/klinik/4711ac8334ade5fa1f3152104f6d1bae.jpg',
+      id: incrementId,
+      message: 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
       date: DateTime.now(),
       listId: widget.listId,
       chatType: ChatTypes(
         type: chatType.file,
-        file: Files.image,
+        file: Files.video,
+        path: '',
       ),
     );
     StaticData.addChat(person);
@@ -89,9 +101,21 @@ class _ChatViewState extends State<ChatView> {
       return;
     }
     for (var i in data.skip(page * 20).take(20).toList().reversed) {
+      incrementId = i['id'];
       List<DownloadTask>? task = [];
+      Uint8List? uint8list;
       if (enumChatTypeParse(i['chatType']) == chatType.file) {
-        task = await FlutterDownloader.loadTasksWithRawQuery(query: 'SELECT * FROM task WHERE url="${i['message']}"');
+        task = await FlutterDownloader.loadTasksWithRawQuery(query: 'SELECT * FROM task WHERE task_id="${i['idFile']}"');
+        if (enumFileTypeParse(i['fileType']) == Files.video) {
+          try {
+            uint8list = await VideoThumbnail.thumbnailData(
+              video: dir + (task!.isNotEmpty ? (task.first.filename ?? '') : ''),
+              imageFormat: ImageFormat.JPEG,
+              maxWidth: 100, // specify the width of the thumbnail, let the height auto-scaled to keep the source aspect ratio
+              quality: 25,
+            );
+          } catch (_) {}
+        }
       }
 
       final person = PersonChat(
@@ -110,13 +134,18 @@ class _ChatViewState extends State<ChatView> {
         chatType: ChatTypes(
           type: enumChatTypeParse(i['chatType']),
           file: enumFileTypeParse(i['fileType']),
-          status: task != null
+          thumnailMemory: uint8list,
+          status: task!.isNotEmpty
               ? task.first.progress == 100
                   ? 1
                   : 0
               : 0,
-          progress: task?.first.progress == 100 ? 1 : 0,
-          path: dir + (task?.first.filename ?? ''),
+          progress: task.isNotEmpty
+              ? task.first.progress == 100
+                  ? 1
+                  : 0
+              : 0,
+          path: dir + (task.isNotEmpty ? (task.first.filename ?? '') : ''),
         ),
       );
 
@@ -131,15 +160,20 @@ class _ChatViewState extends State<ChatView> {
     super.initState();
     _control.addListener(_controllListener);
     IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_send_port');
-    _port.listen((dynamic data) {
+
+    _port.listen((dynamic data) async {
       String id = data[0];
-      DownloadTaskStatus status = data[1];
       int progress = data[2];
-      if (progress >= 100) {
-        StaticData.chat.clear();
-        getData();
+      // try {
+      if (progress == 0) {
+        await StaticData.updateFileId(id, selectedIdDownload!);
+        setState(() {});
+      } else {
+        Future.delayed(const Duration(milliseconds: 500), () async {
+          await StaticData.updateProgress(id, progress);
+          setState(() {});
+        });
       }
-      setState(() {});
     });
     FlutterDownloader.registerCallback(downloadCallback);
     getData();
@@ -179,6 +213,7 @@ class _ChatViewState extends State<ChatView> {
                       final data = StaticData.chat.reversed.toList();
                       final date = dateToString(data[index].date);
                       bool isShow = data[index].isLabel;
+                      print(data[index].chatType.path);
                       List<TextSpan> linkText = [];
                       Widget text = Row();
                       if (data[index].chatType.type == chatType.text) {
@@ -233,31 +268,47 @@ class _ChatViewState extends State<ChatView> {
                               : () async {
                                   if (data[index].chatType.type == chatType.file) {
                                     if (data[index].chatType.file == Files.video) {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => BasicPlayerPage(
-                                            url: data[index].message,
+                                      if (await File(data[index].chatType.path!).exists()) {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) => BasicPlayerPage(
+                                              url: data[index].chatType.path!,
+                                            ),
                                           ),
-                                        ),
-                                      );
+                                        );
+                                      } else {
+                                        String dir = await getPhoneDirectory(path: '', platform: 'android');
+                                        selectedIdDownload = data[index].id;
+                                        await download(
+                                          context: context,
+                                          directory: dir,
+                                          url: data[index].message,
+                                          fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.' + data[index].message.split('.').last,
+                                          isOpen: false,
+                                          isShare: false,
+                                        );
+                                      }
                                     } else if (data[index].chatType.file == Files.image) {
-                                      // Navigator.push(
-                                      //   context,
-                                      //   MaterialPageRoute(
-                                      //     builder: (context) => const ImageViewer(
-                                      //       path: 'https://media.istockphoto.com/photos/abstract-wavy-object-picture-id1198271727?b=1&k=20&m=1198271727&s=170667a&w=0&h=b626WM5c-lq9g_yGyD0vgufb4LQRX9UgYNWPaNUVses=',
-                                      //     ),
-                                      //   ),
-                                      // );
-                                      String dir = await getPhoneDirectory(path: '', platform: 'android');
-                                      await download(
-                                        context: context,
-                                        directory: dir,
-                                        url: data[index].message,
-                                        fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.' + data[index].message.split('.').last,
-                                        isOpen: false,
-                                        isShare: false,
-                                      );
+                                      if (data[index].chatType.path == null) data[index].chatType.path = '';
+                                      if (await File(data[index].chatType.path!).exists()) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ImageViewer(path: data[index].chatType.path!),
+                                          ),
+                                        );
+                                      } else {
+                                        String dir = await getPhoneDirectory(path: '', platform: 'android');
+                                        selectedIdDownload = data[index].id;
+                                        await download(
+                                          context: context,
+                                          directory: dir,
+                                          url: data[index].message,
+                                          fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.' + data[index].message.split('.').last,
+                                          isOpen: false,
+                                          isShare: false,
+                                        );
+                                      }
                                     } else {
                                       launch(data[index].message);
                                     }
@@ -269,21 +320,10 @@ class _ChatViewState extends State<ChatView> {
                               crossAxisAlignment: data[index].type == Person.me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                               children: [
                                 isShow ? Center(child: Text(date)) : const SizedBox(),
-                                data[index].chatType.type == chatType.text
-                                    ? text
-                                    : (data[index].chatType.file == Files.image && data[index].chatType.status == 1
-                                        ? Container(
-                                            width: 100,
-                                            height: 50,
-                                            decoration: BoxDecoration(
-                                                image: DecorationImage(
-                                              image: FileImage(
-                                                File(data[index].chatType.path!),
-                                              ),
-                                            )),
-                                          )
-                                        : const Icon(Icons.file_download)),
-                                Text(DateFormat('HH:mm:ss').format(data[index].date)),
+                                data[index].chatType.type == chatType.text ? text : fileWidget(data[index], setState),
+                                Text(
+                                  DateFormat('HH:mm:ss').format(data[index].date),
+                                ),
                               ],
                             ),
                           ),
@@ -318,4 +358,41 @@ class _ChatViewState extends State<ChatView> {
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+}
+
+Widget fileWidget(PersonChat data, state) {
+  if (data.chatType.file == Files.image && data.chatType.status == 1) {
+    return Container(
+      width: 100,
+      height: 50,
+      decoration: BoxDecoration(
+          image: DecorationImage(
+        image: FileImage(
+          File(data.chatType.path!),
+        ),
+      )),
+    );
+  } else if (data.chatType.file == Files.video && data.chatType.status == 1) {
+    return Container(
+      width: 100,
+      height: 50,
+      decoration: BoxDecoration(
+        image: data.chatType.thumnailMemory == null
+            ? null
+            : DecorationImage(
+                image: MemoryImage(
+                  data.chatType.thumnailMemory!,
+                ),
+              ),
+      ),
+    );
+  }
+  return Row(
+    children: [
+      const Icon(Icons.file_download),
+      CircularProgressIndicator(
+        value: data.chatType.progress / 100,
+      ),
+    ],
+  );
 }

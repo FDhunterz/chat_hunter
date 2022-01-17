@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +41,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> with TickerProviderSt
     super.initState();
     playC = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     play = Tween(begin: 0.0, end: 1.0).animate(playC!);
-    _controller = VideoPlayerController.network(widget.url)
+    _controller = VideoPlayerController.file(File(widget.url))
       ..initialize().then((e) {
         setState(() {});
       })
