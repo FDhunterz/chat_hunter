@@ -38,6 +38,12 @@ class StaticData {
     chat.sort((a, b) => a.date.compareTo(b.date));
   }
 
+  static addChatBackground(PersonChat chatData) async {
+    chat.add(chatData);
+
+    await ChatDatabase.insert(data: chatData);
+  }
+
   static addFromDatabase(PersonChat chatData) async {
     chat.add(chatData);
     chat.sort((a, b) => a.date.compareTo(b.date));
