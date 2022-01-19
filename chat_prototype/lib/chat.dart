@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:chat_prototype/video_player.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
@@ -20,6 +21,8 @@ import 'model/chat.dart';
 import 'notification.dart';
 import 'storage/database.dart';
 
+int incrementId = 0;
+
 class ChatView extends StatefulWidget {
   const ChatView({Key? key, required this.listId, required this.profile, required this.token}) : super(key: key);
   final int listId;
@@ -29,14 +32,26 @@ class ChatView extends StatefulWidget {
   State<ChatView> createState() => _ChatViewState();
 }
 
-class _ChatViewState extends State<ChatView> {
+class _ChatViewState extends State<ChatView> with WidgetsBindingObserver {
   final ScrollController _control = ScrollController();
   int page = 0;
   bool ifNoPagemore = false;
   bool process = false;
   final ReceivePort _port = ReceivePort();
   int? selectedIdDownload;
-  int incrementId = 0;
+  TextEditingController text = TextEditingController();
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.paused) {
+      isInChat = false;
+    } else if (state == AppLifecycleState.resumed) {
+      isInChat = true;
+      StaticData.chat.clear();
+      await getData();
+      setState(() {});
+    }
+  }
 
   _controllListener() {
     if (_control.position.maxScrollExtent == _control.offset && !process) {
@@ -56,8 +71,9 @@ class _ChatViewState extends State<ChatView> {
     ++incrementId;
     final person = PersonChat(
       type: Person.me,
-      message: '''whatsapp://send?phone=6288217081355&text=test''',
+      message: text.text,
       date: DateTime.now(),
+      timezone: DateTime.now().timeZoneOffset.inMicroseconds,
       id: incrementId,
       listId: widget.listId,
       chatType: ChatTypes(
@@ -65,10 +81,14 @@ class _ChatViewState extends State<ChatView> {
       ),
     );
     StaticData.addChat(person);
+    text.text = '';
     setState(() {});
     _control.jumpTo(0);
-    saveList();
-    sendNotification(person, token, widget.token);
+    person.message = person.message.replaceAll("'", '{|||}').replaceAll('"', '{|-|}');
+    await sendNotification(person, token, widget.token);
+    await ChatDatabase.updateStatus(idList: widget.listId, status: Status.send);
+    StaticData.chat.where((element) => element.id == incrementId).first.status = Status.send;
+    setState(() {});
   }
 
   void _me() async {
@@ -78,6 +98,7 @@ class _ChatViewState extends State<ChatView> {
       id: incrementId,
       message: 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
       date: DateTime.now(),
+      timezone: DateTime.now().timeZoneOffset.inMicroseconds,
       listId: widget.listId,
       chatType: ChatTypes(
         type: chatType.file,
@@ -92,6 +113,7 @@ class _ChatViewState extends State<ChatView> {
   saveList() async {}
 
   getData() async {
+    readSend(token, widget.token);
     String dir = await getPhoneDirectory(path: '', platform: 'android');
     final data = await ChatDatabase.getData(
       idList: widget.listId,
@@ -100,6 +122,8 @@ class _ChatViewState extends State<ChatView> {
       ifNoPagemore = true;
       return;
     }
+    StaticData.allChat = [];
+    StaticData.allChatInit(data);
     for (var i in data.skip(page * 20).take(20).toList().reversed) {
       incrementId = i['id'];
       List<DownloadTask>? task = [];
@@ -120,17 +144,19 @@ class _ChatViewState extends State<ChatView> {
 
       final person = PersonChat(
         type: enumPersonParse(i['type']),
-        message: i['message'],
+        message: i['message'].replaceAll('{|||}', "'").replaceAll('{|-|}', '"'),
         date: DateTime.parse(i['date']),
         id: i['id'],
         isLabel: i['isLabel'] == 'true' ? true : false,
         listId: widget.listId,
+        status: enumStatusParse(i['status']),
         person: i['person_name'] != 'null' && i['person_image'] != 'null'
             ? Profile(
                 name: i['person_name'],
                 pathImage: i['person_image'],
               )
             : null,
+        timezone: i['time_zone'],
         chatType: ChatTypes(
           type: enumChatTypeParse(i['chatType']),
           file: enumFileTypeParse(i['fileType']),
@@ -156,8 +182,17 @@ class _ChatViewState extends State<ChatView> {
 
   @override
   void initState() {
+    WidgetsBinding.instance!.addObserver(this);
+    isInChat = true;
+    chatViewState = setState;
     page = 0;
     super.initState();
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      await notificationHandler(message);
+      StaticData.chat.clear();
+      await getData();
+    });
     _control.addListener(_controllListener);
     IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_send_port');
 
@@ -181,7 +216,9 @@ class _ChatViewState extends State<ChatView> {
 
   @override
   void dispose() {
+    isInChat = false;
     IsolateNameServer.removePortNameMapping('downloader_send_port');
+    WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
 
@@ -210,10 +247,13 @@ class _ChatViewState extends State<ChatView> {
                     reverse: true,
                     itemCount: StaticData.chat.length,
                     itemBuilder: (context, index) {
+                      print(index);
                       final data = StaticData.chat.reversed.toList();
-                      final date = dateToString(data[index].date);
+                      DateTime changeTimeZone = data[index].date;
+                      changeTimeZone = data[index].timezone! < 0 ? changeTimeZone.add(Duration(microseconds: data[index].timezone! * -1)) : changeTimeZone.subtract(Duration(microseconds: data[index].timezone!));
+                      changeTimeZone = changeTimeZone.add(Duration(milliseconds: DateTime.now().timeZoneOffset.inMilliseconds));
+                      final date = dateToString(changeTimeZone);
                       bool isShow = data[index].isLabel;
-                      print(data[index].chatType.path);
                       List<TextSpan> linkText = [];
                       Widget text = Row();
                       if (data[index].chatType.type == chatType.text) {
@@ -283,7 +323,7 @@ class _ChatViewState extends State<ChatView> {
                                           context: context,
                                           directory: dir,
                                           url: data[index].message,
-                                          fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.' + data[index].message.split('.').last,
+                                          fileName: DateFormat('y-M-d-H-m-s').format(changeTimeZone) + '.' + data[index].message.split('.').last,
                                           isOpen: false,
                                           isShare: false,
                                         );
@@ -304,7 +344,7 @@ class _ChatViewState extends State<ChatView> {
                                           context: context,
                                           directory: dir,
                                           url: data[index].message,
-                                          fileName: DateFormat('y-M-d-H-m-s').format(DateTime.now()) + '.' + data[index].message.split('.').last,
+                                          fileName: DateFormat('y-M-d-H-m-s').format(changeTimeZone) + '.' + data[index].message.split('.').last,
                                           isOpen: false,
                                           isShare: false,
                                         );
@@ -322,7 +362,7 @@ class _ChatViewState extends State<ChatView> {
                                 isShow ? Center(child: Text(date)) : const SizedBox(),
                                 data[index].chatType.type == chatType.text ? text : fileWidget(data[index], setState),
                                 Text(
-                                  DateFormat('HH:mm:ss').format(data[index].date),
+                                  DateFormat('HH:mm:ss').format(changeTimeZone) + ' ' + data[index].status.toString(),
                                 ),
                               ],
                             ),
@@ -331,6 +371,15 @@ class _ChatViewState extends State<ChatView> {
                       );
                     },
                   ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: TextFormField(
+                controller: text,
+                decoration: const InputDecoration(
+                  hintText: 'Masukkan Pesan',
                 ),
               ),
             ),
@@ -347,15 +396,15 @@ class _ChatViewState extends State<ChatView> {
             tooltip: 'Increment',
             child: const Icon(Icons.add),
           ),
-          Positioned(
-            bottom: 70,
-            child: FloatingActionButton(
-              heroTag: "btn3",
-              onPressed: _me,
-              tooltip: 'Increment',
-              child: const Icon(Icons.ac_unit),
-            ),
-          )
+          // Positioned(
+          //   bottom: 70,
+          //   child: FloatingActionButton(
+          //     heroTag: "btn3",
+          //     onPressed: _me,
+          //     tooltip: 'Increment',
+          //     child: const Icon(Icons.ac_unit),
+          //   ),
+          // )
         ],
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );

@@ -58,3 +58,28 @@ dynamic enumFileTypeParse(data) {
     }
   }
 }
+
+dynamic enumStatusParse(data) {
+  if (data == null) {
+    return 0;
+  }
+  if (data is Status) {
+    if (data == Status.pending) {
+      return 1;
+    } else if (data == Status.send) {
+      return 2;
+    } else if (data == Status.read) {
+      return 3;
+    }
+  } else {
+    if (data == 1) {
+      return Status.pending;
+    } else if (data == 2) {
+      return Status.send;
+    } else if (data == 3) {
+      return Status.read;
+    } else {
+      return null;
+    }
+  }
+}

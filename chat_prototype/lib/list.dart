@@ -5,8 +5,10 @@ import 'package:chat_prototype/storage/database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'chat.dart';
+import 'notification.dart';
 
 int counter = 0;
 
@@ -17,7 +19,15 @@ class ListChatView extends StatefulWidget {
   _ListChatViewState createState() => _ListChatViewState();
 }
 
-class _ListChatViewState extends State<ListChatView> {
+class _ListChatViewState extends State<ListChatView> with WidgetsBindingObserver {
+  final TextEditingController text = TextEditingController();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _getList();
+    }
+  }
+
   _addPerson() async {
     ++counter;
     await StaticData.addListChat(
@@ -27,8 +37,8 @@ class _ListChatViewState extends State<ListChatView> {
         read: 0,
         updated: DateTime.now(),
         lastMessage: 'Belum Ada Pesan',
-        token: 'dQYG08VYSeqs7q7TebG1T2:APA91bEnBe8eXYneKBev_HX5dT7X4kj9-iuejkH5D8U2oj2DJJNNmFIRGJqdCkyagg49YI1WbfzUp5KpiFYZ-6S9HXZETEx5vEqOvAut2CRc99UxzClJ2KVcnxqvtu78bfnA_iTmB07b',
-        groupToken: 'dQYG08VYSeqs7q7TebG1T2:APA91bEnBe8eXYneKBev_HX5dT7X4kj9-iuejkH5D8U2oj2DJJNNmFIRGJqdCkyagg49YI1WbfzUp5KpiFYZ-6S9HXZETEx5vEqOvAut2CRc99UxzClJ2KVcnxqvtu78bfnA_iTmB07b',
+        token: text.text != '' ? text.text : 'fA6cMkfxQAWOGiJmsnWIs-:APA91bG1ERUMX98ncRgl0MAKxDQM2gQAbGB_xE80PB60x43hrUluny4AJ7X6WrS6zEDppaTFj80Mgty1mhKu2n6-t3tgBTTnvb8aKG_-0qHTfeVUojn9vD1-PLNaJ1CiRdsl8CPcPLyK',
+        groupToken: text.text != '' ? text.text : 'fA6cMkfxQAWOGiJmsnWIs-:APA91bG1ERUMX98ncRgl0MAKxDQM2gQAbGB_xE80PB60x43hrUluny4AJ7X6WrS6zEDppaTFj80Mgty1mhKu2n6-t3tgBTTnvb8aKG_-0qHTfeVUojn9vD1-PLNaJ1CiRdsl8CPcPLyK',
         chatType: ChatTypes(type: chatType.text),
       ),
     );
@@ -45,7 +55,7 @@ class _ListChatViewState extends State<ListChatView> {
         ListChat(
           id: i['id'],
           person: Profile(name: i['person_name'], pathImage: i['person_image']),
-          read: i['read'].floor(),
+          read: i['read'] ?? 0,
           updated: DateTime.fromMillisecondsSinceEpoch(i['updated']),
           lastMessage: i['message'] == 'null' ? null : i['message'],
           chatType: ChatTypes(type: enumChatTypeParse(i['chatType']) ?? chatType.text),
@@ -59,11 +69,26 @@ class _ListChatViewState extends State<ListChatView> {
 
   @override
   void initState() {
+    chatViewState = setState;
     super.initState();
+    WidgetsBinding.instance!.addObserver(this);
     Future.delayed(Duration.zero, () async {
-      _getList();
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+        await notificationHandler(message);
+        if (message.data['types'] == 'chat') {
+          await chatRead(message);
+        }
+        await _getList();
+      });
+      await _getList();
       setState(() {});
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance!.removeObserver(this);
+    super.dispose();
   }
 
   @override
@@ -79,6 +104,7 @@ class _ListChatViewState extends State<ListChatView> {
                 return GestureDetector(
                   onTap: () {
                     StaticData.clearChat();
+                    StaticData.readChat(data);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -90,6 +116,12 @@ class _ListChatViewState extends State<ListChatView> {
                       ),
                     ).then((value) async {
                       await _getList();
+
+                      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+                        await notificationHandler(message);
+                        await _getList();
+                      });
+                      chatViewState = setState;
                       setState(() {});
                     });
                   },
@@ -142,23 +174,58 @@ class _ListChatViewState extends State<ListChatView> {
                                 ],
                               ),
                       ),
+                      data.read! > 0
+                          ? Container(
+                              padding: const EdgeInsets.all(3),
+                              child: Center(
+                                child: Text(
+                                  data.read! > 99 ? '99+' : data.read.toString(),
+                                ),
+                              ),
+                            )
+                          : const SizedBox(),
                     ],
                   ),
                 );
               },
             ),
-          )
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: TextFormField(
+              controller: text,
+              decoration: const InputDecoration(
+                hintText: 'Masukkan Token',
+              ),
+            ),
+          ),
         ],
       ),
-
-      floatingActionButton: FloatingActionButton(
-        heroTag: "btn1",
-        onPressed: () {
-          _addPerson();
-        },
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      floatingActionButton: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          const Center(),
+          FloatingActionButton(
+            heroTag: "btn1",
+            onPressed: () {
+              _addPerson();
+            },
+            tooltip: 'Increment',
+            child: const Icon(Icons.add),
+          ),
+          Positioned(
+            bottom: 70,
+            child: FloatingActionButton(
+              heroTag: "btn4",
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: token));
+              },
+              tooltip: 'Increment',
+              child: const Icon(Icons.copy),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

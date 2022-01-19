@@ -3,6 +3,7 @@ import 'dart:typed_data';
 enum Person { me, other }
 enum Files { pdf, image, video }
 enum chatType { text, file }
+enum Status { pending, send, read }
 
 class ChatTypes {
   chatType type;
@@ -32,19 +33,21 @@ class PersonChat {
   String message;
   DateTime date;
   bool isLabel;
-  String? timezone;
+  int? timezone;
+  Status status;
 
-  PersonChat({this.id, required this.type, required this.message, required this.date, this.person, this.isLabel = false, this.listId, required this.chatType});
+  PersonChat({this.id, required this.type, required this.message, required this.date, this.person, this.isLabel = false, this.listId, required this.chatType, this.timezone, this.status = Status.pending});
 }
 
 class GroupChat {}
 
 class ListChat {
-  int? id, read;
+  int? id, read, timezone;
   Profile? person;
   DateTime? updated;
   String? lastMessage, token, groupToken;
   ChatTypes? chatType;
+  bool isTyping;
 
-  ListChat({this.id, this.person, this.read, this.updated, this.lastMessage, this.chatType, this.groupToken, this.token});
+  ListChat({this.id, this.person, this.read, this.updated, this.lastMessage, this.chatType, this.groupToken, this.token, this.timezone, this.isTyping = false});
 }

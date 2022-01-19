@@ -5,19 +5,33 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:intl/intl.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
+Function? chatViewState;
+bool isInChat = false;
+
 String? token;
 
 class StaticData {
+  static List allChat = [];
   static List<PersonChat> chat = [];
   static List<ListChat> list = [];
 
+  static allChatInit(List chat) {
+    allChat = chat;
+  }
+
   static setChat() {
     chat = [];
+    allChat = [];
     // chat.sort((a, b) => a.date.compareTo(b.date));
   }
 
+  static readChat(ListChat list) {
+    ChatDatabase.updateRead(id: list.id);
+    list.read = 0;
+  }
+
   static addChat(PersonChat chatData) async {
-    if (chat.where((element) => DateTime.parse(DateFormat('yyyy-MM-dd').format(element.date)).difference(DateTime.parse(DateFormat('yyyy-MM-dd').format(chatData.date))).inDays == 0 && element.isLabel).isEmpty) {
+    if (allChat.where((element) => DateTime.parse(element['date'].toString().split(' ').first).difference(DateTime.parse(DateFormat('yyyy-MM-dd').format(chatData.date))).inDays == 0 && element['isLabel'] == 'true').isEmpty) {
       final person = PersonChat(
         chatType: chatData.chatType,
         type: chatData.type,
@@ -26,9 +40,11 @@ class StaticData {
         isLabel: true,
         person: chatData.person,
         listId: chatData.listId,
+        timezone: chatData.timezone,
         id: chatData.id,
       );
       chat.add(person);
+      person.message = person.message.replaceAll("'", '{|||}').replaceAll('"', '{|-|}');
       await ChatDatabase.insert(data: person);
     } else {
       chat.add(chatData);
@@ -38,10 +54,10 @@ class StaticData {
     chat.sort((a, b) => a.date.compareTo(b.date));
   }
 
-  static addChatBackground(PersonChat chatData) async {
+  static addChatBackground(PersonChat chatData, List list) async {
     chat.add(chatData);
 
-    await ChatDatabase.insert(data: chatData);
+    await ChatDatabase.insert(data: chatData, read: isInChat ? 0 : (list.first['read'] ?? 0) + 1);
   }
 
   static addFromDatabase(PersonChat chatData) async {
@@ -55,7 +71,6 @@ class StaticData {
   }
 
   static updateFileId(String? id, int index) async {
-    print(index);
     chat.where((element) => element.id == index).first.chatType.idFile = id;
     await ChatDatabase.updateIdFile(
       id: id,

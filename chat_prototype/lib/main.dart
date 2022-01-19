@@ -5,50 +5,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:intl/intl.dart';
 import 'data/static.dart';
 import 'model/chat.dart';
+import 'notification.dart';
 
 Future _backgroundMessageHandler(RemoteMessage message) async {
-  final dataList = await ChatDatabase.getDataListChat();
-  List list = dataList.where((element) => element['groupToken'] == message.data['token']).toList();
-
-  if (list.isEmpty) {
-    await StaticData.addListChat(
-      ListChat(
-        id: dataList.length + 1,
-        person: Profile(name: 'Testing ${dataList.length + 1}', pathImage: 'assets/p.png'),
-        read: 0,
-        updated: DateTime.now(),
-        lastMessage: 'Belum Ada Pesan',
-        groupToken: message.data['token'],
-        token: message.data['token'],
-        chatType: ChatTypes(type: chatType.text),
-      ),
-    );
-    final dataLists = await ChatDatabase.getDataListChat();
-    list = dataLists.where((element) => element['groupToken'] == message.data['token']).toList();
-  }
-  print(message.data);
-  final data = await ChatDatabase.getData(
-    idList: list.isNotEmpty ? list.first['id'] : 0,
-  );
-  final person = PersonChat(
-    type: Person.other,
-    id: data.isEmpty ? null : data.first['id'] + 1,
-    message: message.data['message'],
-    date: DateTime.now(),
-    listId: list.first['id'],
-    person: Profile(
-      name: message.data['person'],
-      pathImage: message.data['person_name'],
-    ),
-    chatType: ChatTypes(
-      type: enumChatTypeParse(int.parse(message.data['chat_type'])),
-      file: enumFileTypeParse(int.parse(message.data['file_type'])),
-      path: '',
-    ),
-  );
-  StaticData.addChat(person);
+  await chatInputGlobal(message);
 }
 
 void main() async {
@@ -61,9 +24,9 @@ void main() async {
   );
 
   token = await FirebaseMessaging.instance.getToken();
-  print(token);
-  FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
+  FirebaseMessaging.onBackgroundMessage(notificationHandler);
   WidgetsFlutterBinding.ensureInitialized();
+
   FlutterDownloader.initialize(debug: false);
   StaticData.setChat();
 }
