@@ -14,9 +14,14 @@ class StaticData {
   static List allChat = [];
   static List<PersonChat> chat = [];
   static List<ListChat> list = [];
+  static List<ListChat> baseList = [];
 
   static allChatInit(List chat) {
     allChat = chat;
+  }
+
+  static searchList(data) async {
+    list = baseList.where((element) => element.person!.name.toString().toUpperCase().contains(data.toString().toUpperCase())).toList();
   }
 
   static setChat() {
@@ -30,7 +35,7 @@ class StaticData {
     list.read = 0;
   }
 
-  static addChat(PersonChat chatData) async {
+  static addChat(PersonChat chatData, {lastestData}) async {
     if (allChat.where((element) => DateTime.parse(element['date'].toString().split(' ').first).difference(DateTime.parse(DateFormat('yyyy-MM-dd').format(chatData.date))).inDays == 0 && element['isLabel'] == 'true').isEmpty) {
       final person = PersonChat(
         chatType: chatData.chatType,
@@ -45,11 +50,11 @@ class StaticData {
       );
       chat.add(person);
       person.message = person.message.replaceAll("'", '{|||}').replaceAll('"', '{|-|}');
-      await ChatDatabase.insert(data: person);
+      await ChatDatabase.insert(data: person, lastestData: lastestData);
     } else {
       chat.add(chatData);
 
-      await ChatDatabase.insert(data: chatData);
+      await ChatDatabase.insert(data: chatData, lastestData: lastestData);
     }
     chat.sort((a, b) => a.date.compareTo(b.date));
   }

@@ -34,11 +34,11 @@ class ChatDatabase {
     await db.close();
   }
 
-  static insert({required PersonChat data, int? read}) async {
+  static insert({required PersonChat data, int? read, DateTime? lastestData}) async {
     Database db = await connect();
     await db.transaction((txn) async {
       await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType,idFile,progress,time_zone,status) VALUES(${data.id},${data.listId},"${data.message}","${data.isLabel}","${enumPersonParse(data.type)}","${data.date}","${data.person?.name}","${data.person?.pathImage}",${enumChatTypeParse(data.chatType.type)},${enumFileTypeParse(data.chatType.file)},"null","0",${data.timezone},${enumStatusParse(data.status)})');
-      await txn.rawUpdate('UPDATE ListChat SET read=$read, updated=${data.type == Person.me ? '0' : DateTime.now().millisecondsSinceEpoch},message="${data.message}",chatType=${enumChatTypeParse(data.chatType.type)},time_zone=${data.timezone} WHERE id=${data.listId}');
+      await txn.rawUpdate('UPDATE ListChat SET read=$read, updated=${data.type == Person.me ? lastestData!.millisecondsSinceEpoch : DateTime.now().millisecondsSinceEpoch},message="${data.message}",chatType=${enumChatTypeParse(data.chatType.type)},time_zone=${data.timezone} WHERE id=${data.listId}');
     });
     await db.close();
   }

@@ -146,19 +146,11 @@ Future<bool> chatRead(RemoteMessage message) async {
   try {
     final dataList = await ChatDatabase.getDataListChat();
     List list = dataList.where((element) => element['groupToken'] == message.data['token']).toList();
-    print(enumStatusParse(Status.read));
     await ChatDatabase.updateStatus(idList: list.first['id'], status: Status.read);
 
     final data = await ChatDatabase.getData(
       idList: list.isNotEmpty ? list.first['id'] : 0,
     );
-    try {
-      if (chatViewState != null) {
-        chatViewState!(() {});
-      }
-    } catch (_) {}
-
-    print(data);
   } catch (_) {
     print(_);
   }
@@ -217,10 +209,5 @@ Future<bool> chatInputGlobal(RemoteMessage message) async {
   if (isInChat) {
     ++incrementId;
   }
-  try {
-    if (chatViewState != null) {
-      chatViewState!(() {});
-    }
-  } catch (_) {}
   return stat;
 }

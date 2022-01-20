@@ -1,6 +1,7 @@
 import 'package:chat_prototype/helper/enum_to_string.dart';
 import 'package:chat_prototype/list.dart';
 import 'package:chat_prototype/storage/database.dart';
+import 'package:chat_prototype/template/list/1/list_1.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -9,10 +10,6 @@ import 'package:intl/intl.dart';
 import 'data/static.dart';
 import 'model/chat.dart';
 import 'notification.dart';
-
-Future _backgroundMessageHandler(RemoteMessage message) async {
-  await chatInputGlobal(message);
-}
 
 void main() async {
   runApp(const MyApp());
@@ -39,8 +36,10 @@ class MyApp extends StatelessWidget {
       title: 'Chat',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        backgroundColor: Colors.white,
       ),
       home: const ListChatView(),
+      // home: const TemplateList1(),
     );
   }
 }
