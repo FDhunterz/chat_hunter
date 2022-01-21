@@ -1,9 +1,9 @@
-import 'package:chat_prototype/chat_hunter.dart';
-import 'package:chat_prototype/data/static.dart';
-import 'package:chat_prototype/helper/enum_to_string.dart';
-import 'package:chat_prototype/model/chat.dart';
-import 'package:chat_prototype/storage/database.dart';
-import 'package:chat_prototype/template/list/1/list_1.dart';
+import 'package:chat_hunter/chat_hunter.dart';
+import 'package:chat_hunter/data/static.dart';
+import 'package:chat_hunter/helper/enum_to_string.dart';
+import 'package:chat_hunter/model/chat.dart';
+import 'package:chat_hunter/storage/database.dart';
+import 'package:chat_hunter/template/list/1/list_1.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

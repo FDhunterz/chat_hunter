@@ -1,6 +1,6 @@
-import 'package:chat_prototype/data/static.dart';
-import 'package:chat_prototype/helper/date_to_string.dart';
-import 'package:chat_prototype/model/chat.dart';
+import 'package:chat_hunter/data/static.dart';
+import 'package:chat_hunter/helper/date_to_string.dart';
+import 'package:chat_hunter/model/chat.dart';
 import 'package:flutter/material.dart';
 
 import '../../search.dart';

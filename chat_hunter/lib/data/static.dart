@@ -1,6 +1,6 @@
-import 'package:chat_prototype/helper/downloader.dart';
-import 'package:chat_prototype/model/chat.dart';
-import 'package:chat_prototype/storage/database.dart';
+import 'package:chat_hunter/helper/downloader.dart';
+import 'package:chat_hunter/model/chat.dart';
+import 'package:chat_hunter/storage/database.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:intl/intl.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:chat_prototype/chat.dart';
-import 'package:chat_prototype/helper/enum_to_string.dart';
-import 'package:chat_prototype/storage/database.dart';
+import 'package:chat_hunter/chat.dart';
+import 'package:chat_hunter/helper/enum_to_string.dart';
+import 'package:chat_hunter/storage/database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:request_api_helper/request.dart' as req;
 import 'package:request_api_helper/request_api_helper.dart';

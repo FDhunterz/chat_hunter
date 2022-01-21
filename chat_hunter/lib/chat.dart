@@ -4,8 +4,8 @@ import 'dart:isolate';
 import 'dart:typed_data';
 import 'dart:ui';
 
-import 'package:chat_prototype/chat_hunter.dart';
-import 'package:chat_prototype/video_player.dart';
+import 'package:chat_hunter/chat_hunter.dart';
+import 'package:chat_hunter/video_player.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/gestures.dart';

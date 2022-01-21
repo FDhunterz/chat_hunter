@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:chat_prototype/chat_hunter.dart';
-import 'package:chat_prototype/data/static.dart';
-import 'package:chat_prototype/helper/date_to_string.dart';
+import 'package:chat_hunter/chat_hunter.dart';
+import 'package:chat_hunter/data/static.dart';
+import 'package:chat_hunter/helper/date_to_string.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:chat_prototype/model/chat.dart';
+import 'package:chat_hunter/model/chat.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
