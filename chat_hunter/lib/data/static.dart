@@ -50,7 +50,7 @@ class StaticData {
       );
       chat.add(person);
       person.message = person.message.replaceAll("'", '{|||}').replaceAll('"', '{|-|}');
-      await ChatDatabase.insert(data: person, lastestData: lastestData);
+      await ChatDatabase.insert(data: person, lastestData: lastestData ?? DateTime.now());
     } else {
       chat.add(chatData);
 

@@ -7,6 +7,7 @@ enum Files { pdf, image, video }
 enum chatType { text, file }
 enum Status { pending, send, read }
 enum Template { standart }
+enum MessageStatus { empty, notConected, sended, pending }
 
 class ChatTypes {
   chatType type;

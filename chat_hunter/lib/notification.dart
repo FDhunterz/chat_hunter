@@ -4,16 +4,22 @@ import 'package:chat_hunter/chat.dart';
 import 'package:chat_hunter/helper/enum_to_string.dart';
 import 'package:chat_hunter/storage/database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart' as notif;
 import 'package:request_api_helper/request.dart' as req;
 import 'package:request_api_helper/request_api_helper.dart';
 
 import 'chat_hunter.dart';
 import 'data/static.dart';
 import 'model/chat.dart';
+import 'notif_setting.dart';
 
 // Replace with server token from firebase console settings.
 
 Future<Map<String, dynamic>> sendNotification(PersonChat chatData, token, otherToken) async {
+  print(token);
+  print(otherToken);
   await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
     alert: false,
     badge: false,
@@ -160,6 +166,7 @@ Future<bool> chatRead(RemoteMessage message) async {
 Future<bool> chatInputGlobal(RemoteMessage message) async {
   bool stat = false;
   final dataList = await ChatDatabase.getDataListChat();
+  print(message.data['message']);
   List list = dataList.where((element) => element['groupToken'] == message.data['token']).toList();
   if (list.isEmpty) {
     await StaticData.addListChat(
@@ -209,5 +216,35 @@ Future<bool> chatInputGlobal(RemoteMessage message) async {
   if (isInChat) {
     ++incrementId;
   }
+  final notif.FlutterLocalNotificationsPlugin notifs = notif.FlutterLocalNotificationsPlugin();
+  final notif.InitializationSettings initializationSettings = notif.InitializationSettings(
+    android: const notif.AndroidInitializationSettings('app_icon'),
+    iOS: notif.IOSInitializationSettings(
+      onDidReceiveLocalNotification: (int? id, String? title, String? body, String? payload) {
+        // showDialog(
+        //   context: context!,
+        //   builder: (BuildContext context) => CupertinoAlertDialog(
+        //     title: Text(title ?? ''),
+        //     content: Text(body ?? ''),
+        //     actions: [
+        //       CupertinoDialogAction(
+        //         isDefaultAction: true,
+        //         child: const Text('Ok'),
+        //         onPressed: () async {
+        //           Navigator.of(context, rootNavigator: true).pop();
+        //         },
+        //       )
+        //     ],
+        //   ),
+        // );
+      },
+    ),
+  );
+  showNotification(
+    body: message.data['message'],
+    id: data.isEmpty ? 0 : data.first['id'] + 1,
+    title: message.data['person_name'],
+    token: message.data['token'],
+  );
   return stat;
 }
