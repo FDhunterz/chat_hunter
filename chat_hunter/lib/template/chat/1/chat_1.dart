@@ -10,6 +10,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../chat.dart';
+import '../../../image_viewer.dart';
+import '../../../video_player.dart';
+
 TextEditingController text = TextEditingController();
 GlobalKey getKey = GlobalObjectKey(UniqueKey());
 double initSize = 0;
@@ -31,6 +35,8 @@ Widget templateChat1({
   required ScrollController scrollController,
   required Function(String) onSendPressed,
   Function(PersonChat)? onHoldEnd,
+  required Function onSendFilePressed,
+  required Function(PersonChat) onDownloadPressed,
 }) {
   return GestureDetector(
     onTap: () {
@@ -225,7 +231,8 @@ Widget templateChat1({
                                                     left: datas[index].type == Person.other ? 0 : null,
                                                     child: GestureDetector(
                                                       onTap: () async {
-                                                        await StaticData.deleteChat(datas[index]);
+                                                        incrementId = await StaticData.deleteChat(datas[index]) ?? 0;
+                                                        print(incrementId);
                                                         setState(() {});
                                                       },
                                                       child: const Icon(Icons.delete),
@@ -251,7 +258,16 @@ Widget templateChat1({
                                                         child: Row(
                                                           mainAxisSize: MainAxisSize.min,
                                                           children: [
-                                                            datas[index].chatType.type == chatType.text ? ConstrainedBox(constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8), child: text) : fileWidget(datas[index], setState),
+                                                            datas[index].chatType.type == chatType.text
+                                                                ? ConstrainedBox(constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8), child: text)
+                                                                : fileWidget(
+                                                                    datas[index],
+                                                                    setState,
+                                                                    context,
+                                                                    () {
+                                                                      onDownloadPressed(datas[index]);
+                                                                    },
+                                                                  ),
                                                           ],
                                                         ),
                                                       ),
@@ -267,7 +283,7 @@ Widget templateChat1({
                                         mainAxisAlignment: datas[index].type == Person.me ? MainAxisAlignment.end : MainAxisAlignment.start,
                                         children: [
                                           Text(
-                                            DateFormat('HH:mm:ss').format(changeTimeZone),
+                                            DateFormat('HH:mm:ss').format(changeTimeZone) + ' ' + datas[index].id.toString(),
                                             style: TextStyle(
                                               fontSize: 9,
                                               color: style?.dateColor,
@@ -392,6 +408,16 @@ Widget templateChat1({
                               color: Colors.white,
                             ),
                           ),
+                          GestureDetector(
+                            onTap: () async {
+                              await onSendFilePressed();
+                            },
+                            child: const Icon(
+                              Icons.file_copy_outlined,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -406,39 +432,117 @@ Widget templateChat1({
   );
 }
 
-Widget fileWidget(PersonChat data, state) {
-  if (data.chatType.file == Files.image && data.chatType.status == 1) {
-    return Container(
-      width: 100,
-      height: 50,
-      decoration: BoxDecoration(
-          image: DecorationImage(
-        image: FileImage(
-          File(data.chatType.path!),
-        ),
-      )),
+Widget fileWidget(PersonChat data, state, context, onDownloadPressed) {
+  print(data.chatType.path);
+  if (data.chatType.file == Files.image && (data.chatType.path != '' && data.chatType.path != null)) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ImageViewer(
+              path: data.chatType.path ?? '',
+            ),
+          ),
+        );
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              borderRadius: data.type == Person.me
+                  ? const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                    )
+                  : const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+              image: DecorationImage(
+                image: FileImage(
+                  File(data.chatType.path!),
+                ),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          data.chatType.progress == 100
+              ? const SizedBox()
+              : SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: data.chatType.progress == 100 || data.chatType.progress == 0 ? null : (data.chatType.progress / 100),
+                  ),
+                ),
+        ],
+      ),
     );
   } else if (data.chatType.file == Files.video && data.chatType.status == 1) {
-    return Container(
-      width: 100,
-      height: 50,
-      decoration: BoxDecoration(
-        image: data.chatType.thumnailMemory == null
-            ? null
-            : DecorationImage(
-                image: MemoryImage(
-                  data.chatType.thumnailMemory!,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HunterPlayer(
+              path: data.chatType.path ?? '',
+            ),
+          ),
+        );
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipRRect(
+            child: Image.memory(data.chatType.thumnailMemory!),
+            borderRadius: data.type == Person.me
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                  )
+                : const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+          ),
+          const Icon(
+            Icons.play_arrow,
+            size: 40,
+          ),
+          data.chatType.progress == 100
+              ? const SizedBox()
+              : SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: data.chatType.progress == 100 || data.chatType.progress == 0 ? null : (data.chatType.progress / 100),
+                  ),
                 ),
-              ),
+        ],
       ),
     );
   }
-  return Row(
-    children: [
-      const Icon(Icons.file_download),
-      CircularProgressIndicator(
-        value: data.chatType.progress / 100,
-      ),
-    ],
+  return GestureDetector(
+    onTap: () {
+      onDownloadPressed();
+    },
+    child: Row(
+      children: [
+        const Icon(Icons.file_download),
+        CircularProgressIndicator(
+          value: data.chatType.progress / 100,
+        ),
+      ],
+    ),
   );
 }

@@ -20,7 +20,7 @@ class _ImageViewerState extends State<ImageViewer> {
           Center(
             child: PhotoView(
               imageProvider: FileImage(File(widget.path)),
-              minScale: 0.8,
+              minScale: 0.3,
               maxScale: 2.0,
             ),
           ),

@@ -7,14 +7,14 @@ import 'package:flutter/material.dart';
 AnimationController? playC;
 Animation<double>? play;
 
-class BasicPlayerPage extends StatefulWidget {
-  final String url;
-  const BasicPlayerPage({Key? key, required this.url}) : super(key: key);
+class HunterPlayer extends StatefulWidget {
+  final String path;
+  const HunterPlayer({Key? key, required this.path}) : super(key: key);
   @override
-  _BasicPlayerPageState createState() => _BasicPlayerPageState();
+  _HunterPlayerState createState() => _HunterPlayerState();
 }
 
-class _BasicPlayerPageState extends State<BasicPlayerPage> with TickerProviderStateMixin {
+class _HunterPlayerState extends State<HunterPlayer> with TickerProviderStateMixin {
   VideoPlayerController? _controller;
   Duration nowDuration = Duration.zero;
 
@@ -41,7 +41,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> with TickerProviderSt
     super.initState();
     playC = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     play = Tween(begin: 0.0, end: 1.0).animate(playC!);
-    _controller = VideoPlayerController.file(File(widget.url))
+    _controller = VideoPlayerController.file(File(widget.path))
       ..initialize().then((e) {
         setState(() {});
       })

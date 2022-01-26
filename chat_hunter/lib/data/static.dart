@@ -53,9 +53,14 @@ class StaticData {
       await ChatDatabase.insert(data: person, lastestData: lastestData ?? DateTime.now());
     } else {
       chat.add(chatData);
-
-      await ChatDatabase.insert(data: chatData, lastestData: lastestData);
+      try {
+        await ChatDatabase.insert(data: chatData, lastestData: lastestData);
+      } catch (_) {
+        chatData.id = (chatData.id ?? 0) + 1;
+        await ChatDatabase.insert(data: chatData, lastestData: lastestData);
+      }
     }
+
     chat.sort((a, b) => a.date.compareTo(b.date));
   }
 
@@ -83,9 +88,14 @@ class StaticData {
     );
   }
 
-  static deleteChat(PersonChat chats) async {
+  static Future<int?> deleteChat(PersonChat chats) async {
     await ChatDatabase.delete(chats.id, chats.listId);
     chat.removeWhere((element) => element.id == chats.id);
+    if (chat.isEmpty) {
+      return 0;
+    } else {
+      return chat.last.id;
+    }
   }
 
   static updateProgress(String? id, int progress) async {
@@ -105,7 +115,17 @@ class StaticData {
         );
       }
     }
-    await ChatDatabase.progressUpdate(id: id, progress: progress);
+    await ChatDatabase.progressUpdate(id: id, progress: progress, idList: getChat.listId);
+  }
+
+  static updateUploadProgress(int? id, int? idList, int progress) async {
+    print(id);
+    PersonChat getChat = chat.where((element) => element.id == id && element.listId == idList).first;
+    getChat.chatType.progress = progress;
+    if (progress >= 100) {
+      getChat.chatType.status = 1;
+    }
+    await ChatDatabase.progressUploadUpdate(id: id.toString(), progress: progress, idList: idList);
   }
 
   static clearChat() {

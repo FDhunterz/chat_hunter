@@ -3,10 +3,13 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 import 'dart:ui';
+import 'package:request_api_helper/request.dart' as req;
+import 'package:request_api_helper/request_api_helper.dart';
 
 import 'package:chat_hunter/chat_hunter.dart';
 import 'package:chat_hunter/video_player.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -47,9 +50,11 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
   int? selectedIdDownload;
   bool isConnected = false;
   StreamSubscription<ConnectivityResult>? subscription;
+  bool inFile = false;
 
   static Animation? _animationSlide;
   static AnimationController? _animationSlideC;
+  List<String> fileUpload = [];
 
   _animate(context, state, Person who) {
     if (who == Person.me) {
@@ -141,15 +146,114 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
     });
   }
 
+  Future<void> sendFile() async {
+    inFile = true;
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      allowedExtensions: ['pdf', 'avi', 'mp4', 'jpg', 'jpeg', 'png'],
+      type: FileType.custom,
+    );
+    fileUpload.clear();
+
+    if (result != null) {
+      final data = await ChatDatabase.getData(
+        idList: widget.listId,
+      );
+      StaticData.allChatInit(data);
+      for (final i in result.files) {
+        ++incrementId;
+        Uint8List? uint8list;
+        Files? file;
+        if (i.path!.split('.').last == 'avi' || i.path!.split('.').last == 'mp4') {
+          file = Files.video;
+          uint8list = await VideoThumbnail.thumbnailData(
+            video: i.path!,
+            imageFormat: ImageFormat.JPEG,
+            maxWidth: 150, // specify the width of the thumbnail, let the height auto-scaled to keep the source aspect ratio
+            quality: 100,
+          );
+        } else if (i.path!.split('.').last == 'pdf') {
+          file = Files.pdf;
+        } else if (i.path!.split('.').last == 'jpeg' || i.path!.split('.').last == 'png' || i.path!.split('.').last == 'jpg') {
+          file = Files.image;
+        }
+
+        final person = PersonChat(
+          type: Person.me,
+          message: i.path ?? '',
+          date: DateTime.now(),
+          timezone: DateTime.now().timeZoneOffset.inMicroseconds,
+          id: incrementId,
+          listId: widget.listId,
+          chatType: ChatTypes(
+            type: chatType.file,
+            path: i.path!,
+            status: 1,
+            progress: 0,
+            file: file,
+            thumnailMemory: uint8list,
+          ),
+        );
+        final persons = person;
+        StaticData.addChat(
+          person,
+          lastestData: newest,
+        );
+
+        try {
+          setState(() {});
+        } catch (_) {}
+        await req.send(
+          type: RESTAPI.post,
+          customData: CustomRequestData(
+            header: {
+              'Accept': 'application/json',
+              'token': 'e9464e576effe6ffca57d5ccd4048155',
+            },
+            url: 'https://mediplusclinic.co.id/apiadmin/kirim_chat_pasien',
+            file: RequestFileData(
+              filePath: [i.path!],
+              fileRequestName: ['img_file'],
+            ),
+          ),
+          changeConfig: RequestApiHelperConfigData(
+            logResponse: true,
+            onSuccess: (data) async {
+              await StaticData.updateUploadProgress(incrementId, widget.listId, 100);
+              persons.message = data['data']['url_galery'];
+              await sendNotification(persons, token, widget.token);
+              await ChatDatabase.updateStatus(idList: widget.listId, status: Status.send);
+              StaticData.chat.where((element) => element.id == incrementId).first.status = Status.send;
+              setState(() {});
+              try {
+                setState(() {});
+              } catch (_) {}
+            },
+          ),
+          onUploadProgress: (start, total) async {
+            await StaticData.updateUploadProgress(incrementId, widget.listId, ((start / total) * 100).floor());
+
+            try {
+              setState(() {});
+            } catch (_) {}
+          },
+        );
+      }
+    }
+    inFile = false;
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused) {
       isInChat = false;
     } else if (state == AppLifecycleState.resumed) {
       isInChat = true;
-      StaticData.chat.clear();
-      await getData();
-      setState(() {});
+      if (!inFile) {
+        StaticData.chat.clear();
+        await getData();
+        setState(() {});
+      }
     }
   }
 
@@ -184,6 +288,11 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
       );
       return;
     }
+
+    final data = await ChatDatabase.getData(
+      idList: widget.listId,
+    );
+    StaticData.allChatInit(data);
     ++incrementId;
     final person = PersonChat(
       type: Person.me,
@@ -249,18 +358,51 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
       incrementId = i['id'];
       List<DownloadTask>? task = [];
       Uint8List? uint8list;
-      if (enumChatTypeParse(i['chatType']) == chatType.file) {
-        task = await FlutterDownloader.loadTasksWithRawQuery(query: 'SELECT * FROM task WHERE task_id="${i['idFile']}"');
+      int status = 0;
+      int progress = 0;
+      String path = '';
+      if (enumPersonParse(i['type']) == Person.me) {
         if (enumFileTypeParse(i['fileType']) == Files.video) {
           try {
             uint8list = await VideoThumbnail.thumbnailData(
-              video: dir + (task!.isNotEmpty ? (task.first.filename ?? '') : ''),
+              video: i['message'],
               imageFormat: ImageFormat.JPEG,
-              maxWidth: 100, // specify the width of the thumbnail, let the height auto-scaled to keep the source aspect ratio
-              quality: 25,
+              maxWidth: 150, // specify the width of the thumbnail, let the height auto-scaled to keep the source aspect ratio
+              quality: 100,
             );
           } catch (_) {}
         }
+        progress = int.parse(i['progress']);
+        status = progress == 100 ? 1 : 0;
+        path = i['message'];
+      } else {
+        print(i['idFile']);
+        if (enumChatTypeParse(i['chatType']) == chatType.file) {
+          task = await FlutterDownloader.loadTasksWithRawQuery(query: 'SELECT * FROM task WHERE task_id="${i['idFile']}"');
+          if (enumFileTypeParse(i['fileType']) == Files.video) {
+            try {
+              uint8list = await VideoThumbnail.thumbnailData(
+                video: dir + (task!.isNotEmpty ? (task.first.filename ?? '') : ''),
+                imageFormat: ImageFormat.JPEG,
+                maxWidth: 150, // specify the width of the thumbnail, let the height auto-scaled to keep the source aspect ratio
+                quality: 100,
+              );
+            } catch (_) {}
+          }
+        }
+
+        status = task!.isNotEmpty
+            ? task.first.progress == 100
+                ? 1
+                : 0
+            : 0;
+
+        progress = task.isNotEmpty
+            ? task.first.progress == 100
+                ? 1
+                : 0
+            : 0;
+        path = dir + (task.isNotEmpty ? (task.first.filename ?? '') : '');
       }
 
       final person = PersonChat(
@@ -282,17 +424,9 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
           type: enumChatTypeParse(i['chatType']),
           file: enumFileTypeParse(i['fileType']),
           thumnailMemory: uint8list,
-          status: task!.isNotEmpty
-              ? task.first.progress == 100
-                  ? 1
-                  : 0
-              : 0,
-          progress: task.isNotEmpty
-              ? task.first.progress == 100
-                  ? 1
-                  : 0
-              : 0,
-          path: dir + (task.isNotEmpty ? (task.first.filename ?? '') : ''),
+          status: status,
+          progress: progress,
+          path: path,
         ),
       );
 
@@ -370,8 +504,10 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
         setState(() {});
       } else {
         Future.delayed(const Duration(milliseconds: 500), () async {
-          await StaticData.updateProgress(id, progress);
-          setState(() {});
+          if (progress > 0) {
+            await StaticData.updateProgress(id, progress < 0 ? 100 : progress);
+            setState(() {});
+          }
         });
       }
     });
@@ -397,6 +533,25 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
   Widget build(BuildContext context) {
     return templateChat1(
       context: context,
+      onDownloadPressed: (personChat) async {
+        DateTime changeTimeZone = personChat.date;
+        changeTimeZone = personChat.timezone! < 0 ? changeTimeZone.add(Duration(microseconds: personChat.timezone! * -1)) : changeTimeZone.subtract(Duration(microseconds: personChat.timezone!));
+        changeTimeZone = changeTimeZone.add(Duration(milliseconds: DateTime.now().timeZoneOffset.inMilliseconds));
+
+        String dir = await getPhoneDirectory(path: '', platform: 'android');
+        selectedIdDownload = personChat.id;
+        await download(
+          context: context,
+          directory: dir,
+          url: personChat.message,
+          fileName: DateFormat('y-M-d-H-m-s').format(changeTimeZone) + '.' + personChat.message.split('.').last,
+          isOpen: false,
+          isShare: false,
+        );
+      },
+      onSendFilePressed: () async {
+        await sendFile();
+      },
       setState: setState,
       title: widget.profile.name,
       scrollController: _control,
@@ -589,39 +744,41 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
   }
 }
 
-Widget fileWidget(PersonChat data, state) {
-  if (data.chatType.file == Files.image && data.chatType.status == 1) {
-    return Container(
-      width: 100,
-      height: 50,
-      decoration: BoxDecoration(
-          image: DecorationImage(
-        image: FileImage(
-          File(data.chatType.path!),
-        ),
-      )),
-    );
-  } else if (data.chatType.file == Files.video && data.chatType.status == 1) {
-    return Container(
-      width: 100,
-      height: 50,
-      decoration: BoxDecoration(
-        image: data.chatType.thumnailMemory == null
-            ? null
-            : DecorationImage(
-                image: MemoryImage(
-                  data.chatType.thumnailMemory!,
-                ),
-              ),
-      ),
-    );
-  }
-  return Row(
-    children: [
-      const Icon(Icons.file_download),
-      CircularProgressIndicator(
-        value: data.chatType.progress / 100,
-      ),
-    ],
-  );
-}
+// Widget fileWidget(PersonChat data, state) {
+//   if (data.chatType.file == Files.image && data.chatType.status == 1) {
+//     return Container(
+//       width: 200,
+//       height: 200,
+//       decoration: BoxDecoration(
+//         image: DecorationImage(
+//           image: FileImage(
+//             File(data.chatType.path!),
+//           ),
+//           fit: BoxFit.cover,
+//         ),
+//       ),
+//     );
+//   } else if (data.chatType.file == Files.video && data.chatType.status == 1) {
+//     return Container(
+//       width: 100,
+//       height: 50,
+//       decoration: BoxDecoration(
+//         image: data.chatType.thumnailMemory == null
+//             ? null
+//             : DecorationImage(
+//                 image: MemoryImage(
+//                   data.chatType.thumnailMemory!,
+//                 ),
+//               ),
+//       ),
+//     );
+//   }
+//   return Row(
+//     children: [
+//       const Icon(Icons.file_download),
+//       CircularProgressIndicator(
+//         value: data.chatType.progress / 100,
+//       ),
+//     ],
+//   );
+// }

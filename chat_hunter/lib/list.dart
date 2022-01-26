@@ -14,7 +14,9 @@ import 'notification.dart';
 int counter = 0;
 
 class ListChatView extends StatefulWidget {
-  const ListChatView({Key? key}) : super(key: key);
+  final Widget? overflowWidget;
+  final Function? currentState;
+  const ListChatView({Key? key, this.overflowWidget, this.currentState}) : super(key: key);
 
   @override
   _ListChatViewState createState() => _ListChatViewState();
@@ -29,28 +31,10 @@ class _ListChatViewState extends State<ListChatView> with WidgetsBindingObserver
     }
   }
 
-  _addPerson() async {
-    ++counter;
-    await StaticData.addListChat(
-      ListChat(
-        id: counter,
-        person: Profile(name: 'Testing $counter', pathImage: 'assets/p.png'),
-        read: 0,
-        updated: DateTime.now(),
-        lastMessage: 'Belum Ada Pesan',
-        token: text.text != '' ? text.text : 'fA6cMkfxQAWOGiJmsnWIs-:APA91bG1ERUMX98ncRgl0MAKxDQM2gQAbGB_xE80PB60x43hrUluny4AJ7X6WrS6zEDppaTFj80Mgty1mhKu2n6-t3tgBTTnvb8aKG_-0qHTfeVUojn9vD1-PLNaJ1CiRdsl8CPcPLyK',
-        groupToken: text.text != '' ? text.text : 'fA6cMkfxQAWOGiJmsnWIs-:APA91bG1ERUMX98ncRgl0MAKxDQM2gQAbGB_xE80PB60x43hrUluny4AJ7X6WrS6zEDppaTFj80Mgty1mhKu2n6-t3tgBTTnvb8aKG_-0qHTfeVUojn9vD1-PLNaJ1CiRdsl8CPcPLyK',
-        chatType: ChatTypes(type: chatType.text),
-      ),
-    );
-
-    setState(() {});
-  }
-
   _getList() async {
-    StaticData.list.clear();
     final list = await ChatDatabase.getDataListChat();
     counter = list.length;
+    StaticData.list.clear();
     for (var i in list) {
       StaticData.list.add(
         ListChat(
@@ -97,38 +81,51 @@ class _ListChatViewState extends State<ListChatView> with WidgetsBindingObserver
   }
 
   @override
-  Widget build(BuildContext context) {
-    return templateList1(
-      context: context,
-      setState: setState,
-      style: ChatHunter.styleListSetting,
-      title: ChatHunter.listTitle,
-      onListTap: (data) async {
-        StaticData.clearChat();
-        StaticData.readChat(data);
-        readSend(token, data.token);
+  void setState(VoidCallback fn) {
+    if (widget.currentState != null) {
+      widget.currentState!(() {});
+    }
+    super.setState(fn);
+  }
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatView(
-              listId: data.id!,
-              profile: data.person!,
-              token: data.token!,
-            ),
-          ),
-        ).then((value) async {
-          SystemChrome.setSystemUIOverlayStyle(
-            const SystemUiOverlayStyle(
-              statusBarColor: Color(0xff162f48),
-              statusBarIconBrightness: Brightness.light,
-            ),
-          );
-          await _getList();
-          chatViewState = setState;
-          setState(() {});
-        });
-      },
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        templateList1(
+          context: context,
+          setState: setState,
+          style: ChatHunter.styleListSetting,
+          title: ChatHunter.listTitle,
+          onListTap: (data) async {
+            StaticData.clearChat();
+            StaticData.readChat(data);
+            readSend(token, data.token);
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatView(
+                  listId: data.id!,
+                  profile: data.person!,
+                  token: data.token!,
+                ),
+              ),
+            ).then((value) async {
+              SystemChrome.setSystemUIOverlayStyle(
+                const SystemUiOverlayStyle(
+                  statusBarColor: Color(0xff162f48),
+                  statusBarIconBrightness: Brightness.light,
+                ),
+              );
+              await _getList();
+              chatViewState = setState;
+              setState(() {});
+            });
+          },
+        ),
+        widget.overflowWidget ?? const SizedBox(),
+      ],
     );
   }
 }

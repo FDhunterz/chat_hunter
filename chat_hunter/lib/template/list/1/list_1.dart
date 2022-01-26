@@ -127,10 +127,10 @@ Widget templateList1({
                                     decoration: BoxDecoration(
                                       color: style?.componentColor,
                                       shape: BoxShape.circle,
-                                      // image: DecorationImage(
-                                      //   image: AssetImage('assets/p.png'),
-                                      //   fit: BoxFit.cover,
-                                      // ),
+                                      image: DecorationImage(
+                                        image: NetworkImage(data.person?.pathImage ?? ''),
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
                                   ),
                                 ),

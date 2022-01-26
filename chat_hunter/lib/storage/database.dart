@@ -25,13 +25,13 @@ class ChatDatabase {
     await db.transaction((txn) async {
       await txn.rawInsert('INSERT INTO ListChat(id,read,person_name,person_image,updated,chatType,token,groupToken,time_zone) VALUES(${data.id},${data.read},"${data.person?.name}","${data.person?.pathImage}",${data.updated!.millisecondsSinceEpoch},0,"${data.token}","${data.groupToken}",${data.timezone})');
     });
-    await db.close();
+    // await db.close();
   }
 
   static deleteListChat(id) async {
     Database db = await connect();
     await db.rawDelete('DELETE FROM ListChat WHERE id = $id');
-    await db.close();
+    // await db.close();
   }
 
   static insert({required PersonChat data, int? read, DateTime? lastestData}) async {
@@ -40,7 +40,7 @@ class ChatDatabase {
       await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType,idFile,progress,time_zone,status) VALUES(${data.id},${data.listId},"${data.message}","${data.isLabel}","${enumPersonParse(data.type)}","${data.date}","${data.person?.name}","${data.person?.pathImage}",${enumChatTypeParse(data.chatType.type)},${enumFileTypeParse(data.chatType.file)},"null","0",${data.timezone},${enumStatusParse(data.status)})');
       await txn.rawUpdate('UPDATE ListChat SET read=$read, updated=${data.type == Person.me ? lastestData!.millisecondsSinceEpoch : DateTime.now().millisecondsSinceEpoch},message="${data.message}",chatType=${enumChatTypeParse(data.chatType.type)},time_zone=${data.timezone} WHERE id=${data.listId}');
     });
-    await db.close();
+    // await db.close();
   }
 
   static insertList({required List<PersonChat> data}) async {
@@ -61,7 +61,7 @@ class ChatDatabase {
       await txn.rawInsert('INSERT INTO Chat(id,idlist,message, isLabel, type,date,person_name,person_image,chatType,fileType,idFile,progress) VALUES $list');
       await txn.rawUpdate('UPDATE ListChat SET updated=${DateTime.now().millisecondsSinceEpoch},message="$lastMessage" WHERE id=${data.first.listId}');
     });
-    await db.close();
+    // await db.close();
   }
 
   static updateRead({int? id}) async {
@@ -69,7 +69,7 @@ class ChatDatabase {
     await db.transaction((txn) async {
       await txn.rawUpdate('UPDATE ListChat SET read=0 WHERE id=$id');
     });
-    await db.close();
+    // await db.close();
   }
 
   static updateStatus({idList, status}) async {
@@ -77,7 +77,7 @@ class ChatDatabase {
     await db.transaction((txn) async {
       await txn.rawUpdate('UPDATE Chat SET status=${enumStatusParse(status)} WHERE idlist = $idList AND status=1 OR status=2');
     });
-    await db.close();
+    // await db.close();
   }
 
   static updateIdFile({String? id, index, idList}) async {
@@ -85,7 +85,7 @@ class ChatDatabase {
     await db.transaction((txn) async {
       await txn.rawUpdate('UPDATE Chat SET idFile="$id" WHERE id=$index AND idlist = $idList');
     });
-    await db.close();
+    // await db.close();
   }
 
   static progressUpdate({String? id, progress, idList}) async {
@@ -95,36 +95,43 @@ class ChatDatabase {
     });
   }
 
+  static progressUploadUpdate({String? id, progress, idList}) async {
+    Database db = await connect();
+    await db.transaction((txn) async {
+      await txn.rawUpdate('UPDATE Chat SET progress="$progress" WHERE id="$id" AND idlist = $idList');
+    });
+  }
+
   static delete(id, idList) async {
     Database db = await connect();
     await db.rawDelete('DELETE FROM Chat WHERE id = $id AND idlist = $idList');
-    await db.close();
+    // await db.close();
   }
 
   static deleteAll() async {
     Database db = await connect();
     await db.rawDelete('DELETE FROM Chat');
-    await db.close();
+    // await db.close();
   }
 
   static Future<List<Map>> getData({required int idList}) async {
     Database db = await connect();
     List<Map> list = await db.rawQuery('SELECT * FROM Chat WHERE idlist = $idList ORDER BY id DESC');
-    await db.close();
+    // await db.close();
     return list;
   }
 
   static Future<List<Map>> getDataByToken({required String token}) async {
     Database db = await connect();
     List<Map> list = await db.rawQuery('SELECT * FROM Chat WHERE groupToken = "$token" ORDER BY id DESC');
-    await db.close();
+    // await db.close();
     return list;
   }
 
   static Future<List<Map>> getDataListChat() async {
     Database db = await connect();
     List<Map> list = await db.rawQuery('SELECT * FROM ListChat ORDER BY updated DESC');
-    await db.close();
+    // await db.close();
     return list;
   }
 

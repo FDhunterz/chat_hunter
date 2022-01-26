@@ -19,8 +19,9 @@ Future<String?> download({fileName, url, directory, bool isOpen = false, bool is
       url: url,
       savedDir: directory,
       requiresStorageNotLow: true,
+      saveInPublicStorage: true,
       fileName: fileName,
-      showNotification: true, // show download progress in status bar (for Android)
+      showNotification: false, // show download progress in status bar (for Android)
       openFileFromNotification: true, // click on notification to open downloaded file (for Android)
     );
     id = data;

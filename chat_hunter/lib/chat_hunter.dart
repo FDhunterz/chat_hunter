@@ -75,8 +75,11 @@ class ChatHunter {
     _firebaseSetting = firebaseSetting;
   }
 
-  static Widget chat() {
-    return const ListChatView();
+  static Widget chat({Widget? overflowWidget, currentState}) {
+    return ListChatView(
+      currentState: currentState,
+      overflowWidget: overflowWidget,
+    );
   }
 
   static initChat() {
