@@ -376,7 +376,6 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
         status = progress == 100 ? 1 : 0;
         path = i['message'];
       } else {
-        print(i['idFile']);
         if (enumChatTypeParse(i['chatType']) == chatType.file) {
           task = await FlutterDownloader.loadTasksWithRawQuery(query: 'SELECT * FROM task WHERE task_id="${i['idFile']}"');
           if (enumFileTypeParse(i['fileType']) == Files.video) {
@@ -389,20 +388,13 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
               );
             } catch (_) {}
           }
+
+          print(i['progress']);
+          status = int.parse(i['progress']) == 100 ? 1 : 0;
+
+          progress = int.parse(i['progress']) == 100 ? 1 : 0;
+          path = dir + (task!.isNotEmpty ? (task.first.filename ?? '') : '');
         }
-
-        status = task!.isNotEmpty
-            ? task.first.progress == 100
-                ? 1
-                : 0
-            : 0;
-
-        progress = task.isNotEmpty
-            ? task.first.progress == 100
-                ? 1
-                : 0
-            : 0;
-        path = dir + (task.isNotEmpty ? (task.first.filename ?? '') : '');
       }
 
       final person = PersonChat(
@@ -422,7 +414,7 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
         timezone: i['time_zone'],
         chatType: ChatTypes(
           type: enumChatTypeParse(i['chatType']),
-          file: enumFileTypeParse(i['fileType']),
+          file: enumFileTypeParse(i['fileType'].toString()),
           thumnailMemory: uint8list,
           status: status,
           progress: progress,
@@ -500,7 +492,7 @@ class _ChatViewState extends State<ChatView> with WidgetsBindingObserver, Ticker
       int progress = data[2];
       // try {
       if (progress == 0) {
-        await StaticData.updateFileId(id, selectedIdDownload!);
+        await StaticData.updateFileId(id, selectedIdDownload!, widget.listId);
         setState(() {});
       } else {
         Future.delayed(const Duration(milliseconds: 500), () async {

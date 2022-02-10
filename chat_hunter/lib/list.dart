@@ -32,10 +32,13 @@ class _ListChatViewState extends State<ListChatView> with WidgetsBindingObserver
   }
 
   _getList() async {
+    counter = 0;
     final list = await ChatDatabase.getDataListChat();
-    counter = list.length;
     StaticData.list.clear();
     for (var i in list) {
+      if (counter < i['id']) {
+        counter = i['id'];
+      }
       StaticData.list.add(
         ListChat(
           id: i['id'],

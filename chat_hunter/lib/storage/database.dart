@@ -50,9 +50,9 @@ class ChatDatabase {
     for (final i in data) {
       ++count;
       if (count == data.length) {
-        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)},"null","0")';
+        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},"${enumFileTypeParse(i.chatType.file)}","null","0")';
       } else {
-        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},${enumFileTypeParse(i.chatType.file)},"null","0"),';
+        list += '(${i.id},${i.listId},"${i.message}","${i.isLabel}","${enumPersonParse(i.type)}","${i.date}","${i.person?.name}","${i.person?.pathImage}",${enumChatTypeParse(i.chatType.type)},"${enumFileTypeParse(i.chatType.file)}","null","0"),';
       }
       lastMessage = i.message;
     }
@@ -83,15 +83,17 @@ class ChatDatabase {
   static updateIdFile({String? id, index, idList}) async {
     Database db = await connect();
     await db.transaction((txn) async {
-      await txn.rawUpdate('UPDATE Chat SET idFile="$id" WHERE id=$index AND idlist = $idList');
+      print(id);
+      final a = await txn.rawUpdate('UPDATE Chat SET idFile="$id" WHERE id=$index AND idlist = $idList');
+      print(a);
     });
-    // await db.close();
   }
 
   static progressUpdate({String? id, progress, idList}) async {
     Database db = await connect();
     await db.transaction((txn) async {
       await txn.rawUpdate('UPDATE Chat SET progress="$progress" WHERE idFile="$id" AND idlist = $idList');
+      print('progress updated');
     });
   }
 

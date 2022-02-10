@@ -1,10 +1,21 @@
+import 'dart:io';
+
 import 'package:chat_hunter/chat_hunter.dart';
+import 'package:chat_hunter/list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:request_api_helper/request.dart' as req;
 import 'package:request_api_helper/request_api_helper.dart';
 
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+  }
+}
+
 void main() async {
+  HttpOverrides.global = MyHttpOverrides();
   runApp(const MyApp());
   await ChatHunter.mainInit(
     firebaseSetting: FirebaseChatSetting(serverId: 'AAAAWPtQC1Y:APA91bHqqDxXxIhDun9O0r5ioD3TvmPAm5LE0UAWdZBXpR_XqhEBRlYMWJTAQtDDIzWXcexG0UuCPhSMn7kmguoeTxa8BnKOnNqYZRsdpq7Pfaoad1f5t79JKlon4Bfifcxiugns92rB'),
@@ -217,7 +228,7 @@ class _UseTemplateState extends State<UseTemplate> {
                           token: _token.text,
                           updated: DateTime.now(),
                           lastMessage: '',
-                          id: 99999,
+                          id: counter + 1,
                         ),
                       );
                       setState(() {});
@@ -231,7 +242,6 @@ class _UseTemplateState extends State<UseTemplate> {
                   GestureDetector(
                     onTap: () async {
                       Clipboard.setData(ClipboardData(text: ChatHunter.tokenApp));
-                      print(ChatHunter.tokenApp);
                     },
                     child: Container(
                       width: 20,

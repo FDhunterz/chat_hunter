@@ -185,11 +185,11 @@ Future<bool> chatInputGlobal(RemoteMessage message) async {
       final dataLists = await ChatDatabase.getDataListChat();
       list = dataLists.where((element) => element['groupToken'] == message.data['token']).toList();
     }
+
     final data = await ChatDatabase.getData(
       idList: list.isNotEmpty ? list.first['id'] : 0,
     );
 
-    Response.start(data);
     bool label = false;
     if (data.isEmpty) {
       label = true;
@@ -198,7 +198,6 @@ Future<bool> chatInputGlobal(RemoteMessage message) async {
     }
 
     chatType types = enumChatTypeParse(int.parse(message.data['chat_type']));
-
     final person = PersonChat(
       type: Person.other,
       id: data.isEmpty ? 0 : data.first['id'] + 1,
@@ -213,7 +212,7 @@ Future<bool> chatInputGlobal(RemoteMessage message) async {
       isLabel: label,
       chatType: ChatTypes(
         type: enumChatTypeParse(int.parse(message.data['chat_type'])),
-        file: enumFileTypeParse(int.parse(message.data['file_type'])),
+        file: enumFileTypeParse(message.data['file_type']),
         path: types == chatType.file ? message.data['message'] : '',
         progress: 0,
         status: 0,

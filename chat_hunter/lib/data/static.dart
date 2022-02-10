@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:chat_hunter/helper/downloader.dart';
 import 'package:chat_hunter/model/chat.dart';
 import 'package:chat_hunter/storage/database.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
@@ -66,6 +69,7 @@ class StaticData {
 
   static addChatBackground(PersonChat chatData, List list) async {
     chat.add(chatData);
+    print(chatData.chatType.file);
 
     await ChatDatabase.insert(data: chatData, read: isInChat ? 0 : (list.first['read'] ?? 0) + 1);
   }
@@ -80,15 +84,28 @@ class StaticData {
     list.add(data);
   }
 
-  static updateFileId(String? id, int index) async {
-    chat.where((element) => element.id == index).first.chatType.idFile = id;
+  static updateFileId(String? id, int index, int idList) async {
+    try {
+      List<PersonChat> getChats = chat.where((element) => element.id == index).toList();
+      if (getChats.isNotEmpty) {
+        getChats.first.chatType.idFile = id;
+      }
+    } catch (_) {
+      print(_);
+    }
     await ChatDatabase.updateIdFile(
       id: id,
       index: index,
+      idList: idList,
     );
   }
 
   static Future<int?> deleteChat(PersonChat chats) async {
+    if (chats.chatType.type == chatType.file) {
+      try {
+        File(chats.chatType.path!).delete();
+      } catch (_) {}
+    }
     await ChatDatabase.delete(chats.id, chats.listId);
     chat.removeWhere((element) => element.id == chats.id);
     if (chat.isEmpty) {

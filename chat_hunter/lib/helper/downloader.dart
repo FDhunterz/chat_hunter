@@ -81,9 +81,8 @@ savePath(String path, String base) {
     if (i < slice.length - 1) {
       dirs += '/';
     }
-    print(base + dirs);
     try {
-      new Directory(base + dirs).create().then((Directory directory) {});
+      Directory(base + dirs).create().then((Directory directory) {});
     } catch (_) {
       print(_);
     }

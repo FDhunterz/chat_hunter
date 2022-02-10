@@ -232,7 +232,6 @@ Widget templateChat1({
                                                     child: GestureDetector(
                                                       onTap: () async {
                                                         incrementId = await StaticData.deleteChat(datas[index]) ?? 0;
-                                                        print(incrementId);
                                                         setState(() {});
                                                       },
                                                       child: const Icon(Icons.delete),
@@ -433,10 +432,27 @@ Widget templateChat1({
 }
 
 Widget fileWidget(PersonChat data, state, context, onDownloadPressed) {
-  print(data.chatType.path);
+  if (data.type == Person.other && data.chatType.status == 0) {
+    return GestureDetector(
+      onTap: () {
+        onDownloadPressed();
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Icon(Icons.file_download),
+          CircularProgressIndicator(
+            strokeWidth: 2,
+            value: (data.chatType.progress / 100),
+          ),
+        ],
+      ),
+    );
+  }
   if (data.chatType.file == Files.image && (data.chatType.path != '' && data.chatType.path != null)) {
     return GestureDetector(
       onTap: () {
+        onDownloadPressed();
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -488,6 +504,7 @@ Widget fileWidget(PersonChat data, state, context, onDownloadPressed) {
   } else if (data.chatType.file == Files.video && data.chatType.status == 1) {
     return GestureDetector(
       onTap: () {
+        onDownloadPressed();
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -532,17 +549,5 @@ Widget fileWidget(PersonChat data, state, context, onDownloadPressed) {
       ),
     );
   }
-  return GestureDetector(
-    onTap: () {
-      onDownloadPressed();
-    },
-    child: Row(
-      children: [
-        const Icon(Icons.file_download),
-        CircularProgressIndicator(
-          value: data.chatType.progress / 100,
-        ),
-      ],
-    ),
-  );
+  return const SizedBox();
 }
